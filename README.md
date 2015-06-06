@@ -13,8 +13,7 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
 * [Installation](#Installation)
 * [Usage Examples](#Usage)
 * [Known Issues](#Known)
-* [Contact Information](#Contact)
-* [License](AMDHsailGdb-v0.5/LICENSE.txt)
+* [LICENSE](AMDHsailGdb-v0.5/LICENSE.txt)
 
 <A NAME="Major">
 ## Major Features
@@ -249,7 +248,3 @@ A useful tutorial on how to use GDB can be found on [RMS's site](http://www.unkn
 * HSAIL kernels that contain function calls are not supported
 * HSAIL backtrace is not supported
 * Terminating hsail-gdb while in the middle of an HSAIL kernel's execution will hang the entire system
- 
-<A NAME="Contact">
-## Contact Information
-Request features and report issues to *budi.purnomo@amd.com* or *perhaad.mistry@amd.com*
