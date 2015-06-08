@@ -6,7 +6,7 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
   * based on GDB 7.8, the GNU source-level debugger
 * AMD GPU Kernel Debug SDK package that contains the necessary header, library and sample files
 
-## Table of contents
+## Table of Contents
 * [Major Features](#Major)
 * [System Requirements](#System)
 * [Package Contents](#Package)
@@ -105,7 +105,7 @@ To set a general HSAIL kernel function breakpoint, use either of the following c
 This will stop the application just before every dispatch begins executing on the device.
 
 #### Setting HSAIL Kernel Source Breakpoints
-In order to break into HSAIL kernels, you need to set HSAIL source breakpoints. Hsail-gdb saves the kernel source for the present dispatch to a temporary file called *temp_source*. HSAIL source breakpoints can be set by specifying the line number from the HSAIL source file. The *temp_source* file is overwritten by hsail-gdb on every dispatch.
+In order to break into HSAIL kernels, you need to set HSAIL source breakpoints. For the Alpha release, you must set HSAIL function breakpoints first (such as `break hsail`) in order for hsail-gdb to stop at the HSAIL source breakpoints. Hsail-gdb saves the kernel source for the present dispatch to a temporary file called *temp_source*. HSAIL source breakpoints can be set by specifying the line number from the *temp_source* HSAIL source file. The *temp_source* file is overwritten by hsail-gdb on every dispatch.
 
 Once you hit a kernel function breakpoint, you can view the *temp_source* file and choose a line number. You can set the source breakpoint using the syntax
 * `break hsail:line_number`
@@ -248,3 +248,4 @@ A useful tutorial on how to use GDB can be found on [RMS's site](http://www.unkn
 * HSAIL kernels that contain function calls are not supported
 * HSAIL backtrace is not supported
 * Terminating hsail-gdb while in the middle of an HSAIL kernel's execution will hang the entire system
+* HSAIL function breakpoints must also be set to stop at HSAIL source breakpoints.
