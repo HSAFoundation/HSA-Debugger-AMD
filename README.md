@@ -26,6 +26,7 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
 ## What's New in September 2015 Beta Release (version 0.6)
 * Initial AMD Carrizo support (alpha).
 * Improves support for HSAIL-level debugging for Kalmar applications.
+* Improves support for HSAIL-level debugging for SNACK applications.
 * Adds support for conditional breakpoint based on the global work-item id.
 * Improves support for running hsail-gdb on hsa cluster machines.
 * Improves support when terminating application or hsail-gdb abruptly.
@@ -77,8 +78,8 @@ The directory structure of the HSA Debugger packages:
     * *hsail-gdb*, *amd-gdb*, *.gdbinit*
   * *LICENSE.txt*
 * *ubuntu*
-  * *amd-gpu-kernel-debug-sdk_0.6.856_amd64.deb*
-  * *amd-hsail-gdb_0.6.856_amd64.deb*
+  * *amd-gpu-kernel-debug-sdk_0.6.862_amd64.deb*
+  * *amd-hsail-gdb_0.6.862_amd64.deb*
   
 If you download the HSA Debugger packages or files separately, you must create the same directory structure as shown above in order to run hsail-gdb successfully.
   
@@ -92,8 +93,8 @@ First, make sure that the HSA system is setup correctly
     As part of the HSAIL debugger package, there is a sample HSAIL *MatrixMultiplication* that can be used with hsail-gdb.
   
 ###HSA Debugger Installation
-1. Download the debian packages (*amd-gpu-kernel-debug-sdk_0.6.856_amd64.deb* and *amd-hsail-gdb_0.6.856_amd64.deb*)
-    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_0.6.856_amd64.deb amd-hsail-gdb_0.6.856_amd64.deb`
+1. Download the debian packages (*amd-gpu-kernel-debug-sdk_0.6.862_amd64.deb* and *amd-hsail-gdb_0.6.862_amd64.deb*)
+    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_0.6.862_amd64.deb amd-hsail-gdb_0.6.862_amd64.deb`
 	  * The installed files will be placed in */opt/amd/hsa-debugger* folder.
 2. Ensure the environment variable *LD_LIBRARY_PATH* contains the directory of the HSA Runtime library (the default is */opt/hsa/lib*).  You can add the following line into *.bashrc* file
   * `export LD_LIBRARY_PATH=/opt/hsa/lib:${LD_LIBRARY_PATH}`
@@ -109,7 +110,8 @@ First, make sure that the HSA system is setup correctly
 <A NAME="Known">
 ## Known Issues for September 2015 Beta Release
 * Incorrect debugging results with Kalmar Stencil2D and TileStaticStorageBandwitdh samples due to improperly generated debug info in these applications.
-* Debugging HSA applications that do not properly clean up queue resources (by destroying queues) and shut down the hsa runtime may cause segmentation fault or hang in hsail-gdb.  These issues appear with existing SNACK sample applications. 
+* Debugging the multiple_cl_files SNACK example can cause a system hang.
+* Enabling logging on Carrizo can cause a segmentation fault at the end of the application.
 * HSAIL programs (i.e. hsa code objects) that contain more than one BRIG module are not supported
 * HSAIL kernels that contain global (or read only) variables are not supported
 * HSAIL kernels that contain hsail function calls are not supported

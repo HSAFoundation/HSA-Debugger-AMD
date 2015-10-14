@@ -28,8 +28,8 @@
 # Check for gdbinit having hsailConfigure
 # Check for amd-gdb executable
 
-# gdb arguments
-GDB_ARGS=$*
+# Concatenate all arguments in a single variable
+GDB_ARGS="$*"
 
 # Get the full path to the script
 SOURCE="${BASH_SOURCE[0]}"
@@ -109,7 +109,7 @@ export ENABLE_HSAIL_GDB=1
 $REALPATH/amd-gdb -iex "add-auto-load-safe-path $REALPATH" -ix $REALPATH/.gdbinit $GDB_ARGS
 
 #cp $REALPATH/amd-gdb $REALPATH/gdb
-#gdb --args $REALPATH/gdb $1
+#gdb --args $REALPATH/gdb $GDB_ARGS
 
 
 # Steps to run after amd-gdb exits
