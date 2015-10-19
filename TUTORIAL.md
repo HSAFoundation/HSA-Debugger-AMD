@@ -1,17 +1,32 @@
+## Table of Contents
+* [How do I start my HSAIL program?](#HowDoIStart)
+* [How do I set breakpoints in my HSAIL program?](#HowDoISetBreakpoints)
+  * [Setting HSAIL Function Breakpoints](#SetHsailFunctionBreakpoints)
+  * [Setting HSAIL Kernel Source Breakpoints](#SetHsailKernelSourceBreakpoints)
+  * [Setting Conditional HSAIL Kernel Source Breakpoints](#SetConditionalHsailKernelSourceBreakpoints)
+  * [Managing HSAIL Breakpoints](#ManagingHsailBreakpoints)
+* [How do I single step in  a HSAIL kernel?](#HowDoISingleStep)
+* [How do I print HSAIL registers?](#HowDoIPrintHsailRegisters)
+* [How do I view HSAIL dispatch info?](#HowDoIViewHsailDispatchInfo)
+* [Generating Logs for Reporting Issues in hsail-gdb](#GeneratingLogs)
+* [Others](#Others)
+
 <A NAME="Usage">
-## Usage Examples
+<A NAME="HowDoIStart">
 ### How do I start my HSAIL program?
 You can start your program in hsail-gdb just like you would any program under gdb
 * `hsail-gdb MatrixMul`
 * You should now be in the gdb prompt and can start execution of the program
 * `(gdb) start`
 
+<A NAME="HowDoISetBreakpoints">
 ### How do I set breakpoints in my HSAIL program?
 To set breakpoints in HSAIL kernels, hsail-gdb defines
 * **HSAIL kernel function breakpoint:** Similar to a gdb function breakpoint, allows you stop the application just before a **specific** HSAIL dispatch starts
 * **Generic HSAIL kernel breakpoint:** Stop the application before **any** HSAIL dispatch starts
 * **Source line breakpoint:** A breakpoint that is set on a particular line of HSAIL source
 
+<A NAME="SetHsailFunctionBreakpoints">
 #### Setting HSAIL Function Breakpoints
 The gdb `break` command has been extended to `break hsail` in order to set HSAIL breakpoints.
 To set a specific HSAIL kernel function breakpoints: 
@@ -28,6 +43,7 @@ To set a general HSAIL kernel function breakpoint, use either of the following c
 
 This will stop the application just before every dispatch begins executing on the device.
 
+<A NAME="SetHsailKernelSourceBreakpoints">
 #### Setting HSAIL Kernel Source Breakpoints
 In order to break into HSAIL kernels, you need to set HSAIL source breakpoints. For this release, you must set HSAIL function breakpoints first (such as `break hsail`) in order for hsail-gdb to stop at the HSAIL source breakpoints. Hsail-gdb saves the kernel source for the present dispatch to a temporary file called *temp_source*. HSAIL source breakpoints can be set by specifying the line number from the *temp_source* HSAIL source file. The *temp_source* file is overwritten by hsail-gdb on every dispatch.
 
@@ -43,6 +59,7 @@ HSAIL breakpoint 1 (PC:0x08d0 mad_u32 $s0, $s1, $s0, $s3; temp_source@line 150)
 
 When you continue the program's execution, the application will stop when any work-item reaches line 150 in *temp_source*.
 
+<A NAME="SetConditionalHsailKernelSourceBreakpoints">
 #### Setting Conditional HSAIL Kernel Source Breakpoints
 Conditional HSAIL breakpoints allow you to stop the application only when a particular workitem hits a breakpoint. You can set a conditional source breakpoint by specifying the a work-item using the syntax:
 * `break hsail:line_number if wg:x,y,z wi:x,y,z`
@@ -59,6 +76,7 @@ When the application is executed, the dispatch will stop when line 150 is execut
 [hsail-gdb]: Breakpoint 2 at mad_u32 $s0, $s1, $s0, $s3; temp_source@line 150
 Stopped on HSAIL breakpoint
 ```
+<A NAME="ManagingHsailBreakpoints">
 #### Managing HSAIL Breakpoints
 * You can use the same gdb commands such as `info bre` to view information about the active HSAIL and host breakpoints
 The command `info bre` shows multiple HSAIL kernel source breakpoints, an HSAIL function breakpoint and a host breakpoint
@@ -76,6 +94,7 @@ breakpoint already hit 320 times
 
 * You can also delete HSAIL breakpoints using the same command as GDB's host breakpoints `del breakpoint_number`
 
+<A NAME="HowDoISingleStep">
 ### How do I single step in  a HSAIL kernel?
 You can single step in a HSAIL dispatch using the conventional `step` command. 
 Only a single step is supported at a time. 
@@ -109,7 +128,7 @@ Stopped on HSAIL breakpoint
 Continuing.
 ```
 
-
+<A NAME="HowDoIPrintHsailRegisters">
 ### How do I print HSAIL registers?
 To print HSAIL registers in a HSAIL kernel, the gdb `print` command has been extended. To print HSAIL registers.
 * `print hsail:$register_name`
@@ -133,6 +152,7 @@ Switching the focus to another work-item and printing *$s0* allows us to view da
 $3 = 1
 ```
 
+<A NAME="HowDoIViewHsailDispatchInfo">
 ### How do I view HSAIL dispatch info?
 The `info` command has been extended to `info hsail`.
 The `info hsail` command allows you to view the present state of the HSAIL dispatch and also allows you to view information about the HSAIL dispatches that have executed over the lifetime of the application.
@@ -178,6 +198,7 @@ Index   Wavefront ID             Work-item ID    Absolute Work-item ID          
    *0     0x408002e0                  0, 0, 0                  0, 0, 0       0x6d8   temp_source@line 150
 ```
 
+<A NAME="GeneratingLogs">
 ### Generating Logs for Reporting Issues in hsail-gdb
 Additional log files can be generated by hsail-gdb. These log files should be sent to the hsail-gdb developers to allow them to diagnose issues.
 Logging is enabled with the `HSAIL_GDB_ENABLE_LOG` environment variable as shown below
@@ -191,5 +212,6 @@ The environment variable enables logging and provides a prefix for the log file 
 As the `MatrixMul` application executes, log files with the prefix `DebugLogs_` will be generated. 
 The log files generated include logs from GDB, the HSA debug Agent and the HSA code objects used in the applications. Each debug session's log file's name will include a unique `SessionID`.
 
+<A NAME="Others">
 ### Others
 A useful tutorial on how to use GDB can be found on [RMS's site](http://www.unknownroad.com/rtfm/gdbtut/).
