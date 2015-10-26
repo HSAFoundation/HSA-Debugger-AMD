@@ -8,7 +8,7 @@
 * [How do I single step in  a HSAIL kernel?](#HowDoISingleStep)
 * [How do I print HSAIL registers?](#HowDoIPrintHsailRegisters)
 * [How do I view HSAIL dispatch info?](#HowDoIViewHsailDispatchInfo)
-* [How do I debug SNACK Applications?]("HowDoIDebugSNACKApplications)
+* [How do I debug SNACK Applications?](#HowDoIDebugSNACKApplications)
 * [Generating Logs for Reporting Issues in hsail-gdb](#GeneratingLogs)
 * [Others](#Others)
 
