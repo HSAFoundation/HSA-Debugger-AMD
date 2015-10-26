@@ -8,6 +8,7 @@
 * [How do I single step in  a HSAIL kernel?](#HowDoISingleStep)
 * [How do I print HSAIL registers?](#HowDoIPrintHsailRegisters)
 * [How do I view HSAIL dispatch info?](#HowDoIViewHsailDispatchInfo)
+* [How do I debug SNACK Applications?]("HowDoIDebugSNACKApplications)
 * [Generating Logs for Reporting Issues in hsail-gdb](#GeneratingLogs)
 * [Others](#Others)
 
@@ -197,6 +198,16 @@ Information for Work-item
 Index   Wavefront ID             Work-item ID    Absolute Work-item ID          PC            Source line
    *0     0x408002e0                  0, 0, 0                  0, 0, 0       0x6d8   temp_source@line 150
 ```
+
+<A NAME="HowDoIDebugSNACKApplications">
+### How do I Debug SNACK Applications?
+To debug SNACK applications you need to let CLOC know to compile the HSAIL kernels for debug and embed the HSAIL kernel source in the binary. 
+
+This can be done adding the environment variable below before calling the buildrun.sh script for the SNACK applications.
+```
+export LIBHSAIL_OPTIONS_APPEND="-g -include-source"
+```
+You can then debug the SNACK application just like the other HSAIL applications described above.
 
 <A NAME="GeneratingLogs">
 ### Generating Logs for Reporting Issues in hsail-gdb
