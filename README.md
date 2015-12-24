@@ -100,7 +100,8 @@ First, make sure that the HSA system is setup correctly
   
 ###HSA Debugger Installation
 1. Download the debian packages (*amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb* and *amd-hsail-gdb_1.0.908_amd64.deb*)
-    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb amd-hsail-gdb_1.0.908_amd64.deb`
+    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb`
+    * `sudo dpkg -i amd-hsail-gdb_1.0.908_amd64.deb`
 	  * The installed files will be placed in */opt/amd/hsa-debugger* folder.
 2. Ensure the environment variable *LD_LIBRARY_PATH* contains the directory of the HSA Runtime library (the default is */opt/hsa/lib*).  You can add the following line into *.bashrc* file
   * `export LD_LIBRARY_PATH=/opt/hsa/lib:${LD_LIBRARY_PATH}`
