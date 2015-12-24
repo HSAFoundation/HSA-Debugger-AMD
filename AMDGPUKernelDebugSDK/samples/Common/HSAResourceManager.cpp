@@ -1,56 +1,16 @@
 //==============================================================================
-// Copyright 2015 ADVANCED MICRO DEVICES, INC.
+// Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-// AMD is granting you permission to use this software and documentation(if any)
-// (collectively, the "Materials") pursuant to the terms and conditions of the
-// Software License Agreement included with the Materials.If you do not have a
-// copy of the Software License Agreement, contact your AMD representative for a
-// copy.
-//
-// You agree that you will not reverse engineer or decompile the Materials, in
-// whole or in part, except as allowed by applicable law.
-//
-// WARRANTY DISCLAIMER : THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF
-// ANY KIND.AMD DISCLAIMS ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY,
-// INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON - INFRINGEMENT, THAT THE
-// SOFTWARE WILL RUN UNINTERRUPTED OR ERROR - FREE OR WARRANTIES ARISING FROM
-// CUSTOM OF TRADE OR COURSE OF USAGE.THE ENTIRE RISK ASSOCIATED WITH THE USE OF
-// THE SOFTWARE IS ASSUMED BY YOU.Some jurisdictions do not allow the exclusion
-// of implied warranties, so the above exclusion may not apply to You.
-//
-// LIMITATION OF LIABILITY AND INDEMNIFICATION : AMD AND ITS LICENSORS WILL NOT,
-// UNDER ANY CIRCUMSTANCES BE LIABLE TO YOU FOR ANY PUNITIVE, DIRECT,
-// INCIDENTAL, INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING FROM USE OF
-// THE SOFTWARE OR THIS AGREEMENT EVEN IF AMD AND ITS LICENSORS HAVE BEEN
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.In no event shall AMD's total
-// liability to You for all damages, losses, and causes of action (whether in
-// contract, tort (including negligence) or otherwise) exceed the amount of $100
-// USD.  You agree to defend, indemnify and hold harmless AMD and its licensors,
-// and any of their directors, officers, employees, affiliates or agents from
-// and against any and all loss, damage, liability and other expenses (including
-// reasonable attorneys' fees), resulting from Your use of the Software or
-// violation of the terms and conditions of this Agreement.
-//
-// U.S.GOVERNMENT RESTRICTED RIGHTS : The Materials are provided with
-// "RESTRICTED RIGHTS." Use, duplication, or disclosure by the Government is
-// subject to the restrictions as set forth in FAR 52.227 - 14 and DFAR252.227 -
-// 7013, et seq., or its successor.Use of the Materials by the Government
-// constitutes acknowledgement of AMD's proprietary rights in them.
-//
-// EXPORT RESTRICTIONS: The Materials may be subject to export restrictions as
-//                      stated in the Software License Agreement.
-/// \author Developer Tools
+/// \author AMD Developer Tools
 /// \file
 /// \brief  HSA Runtime resource management class
 //==============================================================================
-
 /// \todo: Considering having an HSA application counter to keep track of how many applications are using HSA runtime.
 
 #if defined(_WIN32) || defined(_WIN64)
-#include <stdlib.h>   // _putenv_s
+    #include <stdlib.h>   // _putenv_s
 #else
-#include <cstdlib>    // setenv, unsetenv
+    #include <cstdlib>    // setenv, unsetenv
 #endif
 
 #include <cstring>    // memset, memcpy
@@ -62,24 +22,36 @@
 
 namespace DevTools
 {
-// Static lcoal function declaration
-static bool InitAQL(hsa_kernel_dispatch_packet_t& aqlPacket);
 
-uint16_t HSAResourceManager::ms_hsaCount = 0;
-hsa_agent_t HSAResourceManager::ms_gpu = { 0 };
-uint32_t HSAResourceManager::ms_chipID = 0;
-bool HSAResourceManager::ms_hasRuntime = false;
-bool HSAResourceManager::ms_profilingEnabled = false;
+// Local struct to query gpu and cpu agent.
+typedef struct AgentList
+{
+    std::vector<AgentInfo> m_vecGPU;
+    std::vector<AgentInfo> m_vecCPU;
+} AgentList;
+
+static bool gs_bVerbosePrint = false;
+
+// Static lcoal function declaration
+static bool         InitAQL(hsa_kernel_dispatch_packet_t& aqlPacket);
+static hsa_status_t FindMemRegions_Callback(hsa_region_t region, void* data);
+static hsa_status_t QueryDevice_Callback(hsa_agent_t agent, void* pData);
+
+uint16_t     HSAResourceManager::ms_hsaCount = 0;
+AgentInfo    HSAResourceManager::ms_gpu;
+AgentInfo    HSAResourceManager::ms_cpu;
+bool         HSAResourceManager::ms_hasRuntime = false;
+bool         HSAResourceManager::ms_profilingEnabled = false;
 hsa_queue_t* HSAResourceManager::ms_pQueue = NULL;
 
 // ------------------------------------- Public Functions -------------------------------------
 HSAResourceManager::HSAResourceManager() :
     m_executable({0}),
     m_codeObj({0}),
+    m_pArgsBuff(NULL),
+    m_maxArgSize(0),
     m_argsSize(0)
 {
-    memset(m_argsBuff, 0, sizeof(m_argsBuff));
-
     ms_hsaCount++;
 }
 
@@ -124,25 +96,53 @@ bool HSAResourceManager::InitRuntime(bool verbosePrint)
             }
         }
 
-        if (verbosePrint)
+        gs_bVerbosePrint = verbosePrint;
+        AgentList agentList; // Local agentList to get agents information
+        status = hsa_iterate_agents(QueryDevice_Callback, &agentList);
+
+        if (!HSA_CHECK_STATUS(status))
         {
-            // Just dump out information onto screen
-            hsa_iterate_agents(QueryDevice, NULL);
+            std::cerr << "Error in HSAResourceManager::InitRuntime() when querying all HSA devices.\n";
+            ret &= false;
         }
 
-        // Get GPU devices
-        bool lret = true;
-        status = hsa_iterate_agents(GetGPUDevice, &ms_gpu);
-
-        if (!HSA_CHECK_STATUS(status) || 0 == ms_gpu.handle)
+        // At least one GPU and one CPU should present
+        if (0 == agentList.m_vecGPU.size())
         {
-            std::cerr << "Error in HSAResourceManager::InitRuntime(): Get GPU device failed.\n";
-            lret = false;
+            std::cerr << "Error in HSAResourceManager::InitRuntime(): Can't find any GPU device.\n";
+            return false;
         }
 
-        ret &= lret;
+        if (0 == agentList.m_vecCPU.size())
+        {
+            std::cerr << "Error in HSAResourceManager::InitRuntime(): Can't find any CPU device.\n";
+            return false;
+        }
+
+        // Choose the first agent from the agent vector.
+        ms_gpu = agentList.m_vecGPU[0];
+        ms_cpu = agentList.m_vecCPU[0];
+
+        // Find all memory region
+        status = hsa_agent_iterate_regions(ms_gpu.m_device, FindMemRegions_Callback, &ms_gpu);
+        ret &= HSA_CHECK_STATUS(status);
+
+        status = hsa_agent_iterate_regions(ms_cpu.m_device, FindMemRegions_Callback, &ms_cpu);
+        ret &= HSA_CHECK_STATUS(status);
 
         ms_hasRuntime = true;
+    }
+
+    // Cache hsa version number
+    {
+        uint16_t major = 0;
+        uint16_t minor = 0;
+
+        if (true != GetHsaVersion(major, minor) || (0 == major && 0 == minor))
+        {
+            std::cerr << "Error in caching hsa version numbers.\n";
+            ret &= false;
+        }
     }
 
     return ret;
@@ -167,72 +167,45 @@ bool HSAResourceManager::PrintHsaVersion()
     return ret;
 }
 
-const uint32_t& HSAResourceManager::GPUChipID()
-{
-    if (0 != ms_chipID)
-    {
-        return ms_chipID;
-    }
-
-    bool ret = true;
-
-    ret = HSAResourceManager::InitRuntime();
-    if (!ret || 0 == ms_gpu.handle)
-    {
-        std::cerr << "Error in GPUChipID(): InitRuntime() failed.\n";
-        ms_chipID = 0;
-        return ms_chipID;
-    }
-
-    // Query chip id
-    hsa_status_t status = hsa_agent_get_info(ms_gpu, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_CHIP_ID), &ms_chipID);
-    if (!HSA_CHECK_STATUS(status))
-    {
-        std::cerr << "Error in GPUChipID(): Obtaining chip id failed.\n";
-        ms_chipID = 0;
-        return ms_chipID;
-    }
-
-    return ms_chipID;
-}
-
 bool HSAResourceManager::GetHsaVersion(uint16_t& major, uint16_t& minor)
 {
+    static uint16_t s_major = 0;
+    static uint16_t s_minor = 0;
+
+    if (0 != s_major || 0 != s_minor)
+    {
+        major = s_major;
+        minor = s_minor;
+        return true;
+    }
+
     bool ret = true;
 
-    ret = HSAResourceManager::InitRuntime();
-    if (!ret)
+    if (false == ms_hasRuntime)
     {
-        major = 0;
-        minor = 0;
-        std::cerr << "Error in HSAResourceManager::GetHsaVersion: Cannot init HSA runtime.\n";
-        return ret;
+        std::cerr << "Error in HSAResourceManager::GetHsaVersion(): HSA must be initilaized before caching version number.\n";
+        return false;
     }
-
-    hsa_status_t status = hsa_system_get_info(HSA_SYSTEM_INFO_VERSION_MAJOR, &major);
-
-    if (!HSA_CHECK_STATUS(status))
+    else
     {
-        ret = false;
-        std::cerr << "Error in HSAResourceManager::GetHsaVersion(): Get HSA Major version number failed\n";
-    }
+        hsa_status_t status = hsa_system_get_info(HSA_SYSTEM_INFO_VERSION_MAJOR, &s_major);
 
-    status = hsa_system_get_info(HSA_SYSTEM_INFO_VERSION_MINOR, &minor);
-
-    if (!HSA_CHECK_STATUS(status))
-    {
-        ret = false;
-        std::cerr << "Error in HSAResourceManager::GetHsaVersion(): Get HSA Minor version number failed\n";
-    }
-
-    // If there is no any other hsa resource manager
-    if (0 == ms_hsaCount)
-    {
-        if (!HSAResourceManager::ShutDown())
+        if (!HSA_CHECK_STATUS(status))
         {
             ret = false;
-            std::cerr << "Error in HSAResourceManager::GetHsaVersion(): Cannot shut down the HSA runtime which init by this function.\n";
+            std::cerr << "Error in HSAResourceManager::GetHsaVersion(): Get HSA Major version number failed\n";
         }
+
+        status = hsa_system_get_info(HSA_SYSTEM_INFO_VERSION_MINOR, &s_minor);
+
+        if (!HSA_CHECK_STATUS(status))
+        {
+            ret = false;
+            std::cerr << "Error in HSAResourceManager::GetHsaVersion(): Get HSA Minor version number failed\n";
+        }
+
+        major = s_major;
+        minor = s_minor;
     }
 
     return ret;
@@ -250,7 +223,7 @@ bool HSAResourceManager::CreateDefaultQueue(bool enableKernelTimestamps)
     }
 
     uint32_t queueSize = 0;
-    hsa_status_t status = hsa_agent_get_info(ms_gpu, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queueSize);
+    hsa_status_t status = hsa_agent_get_info(ms_gpu.m_device, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queueSize);
 
     if (!HSA_CHECK_STATUS(status))
     {
@@ -258,7 +231,9 @@ bool HSAResourceManager::CreateDefaultQueue(bool enableKernelTimestamps)
         ret = false;
     }
 
-    status = hsa_queue_create(ms_gpu,                 // HSA agent
+    ms_gpu.m_maxQueueSize = queueSize;
+
+    status = hsa_queue_create(ms_gpu.m_device,        // HSA agent
                               queueSize,              // Number of packets the queue is expected to hold
                               HSA_QUEUE_TYPE_SINGLE,  // Type of the queue
                               NULL,                   // callback related to the queue. No specific requirement so it should be NULL.
@@ -307,7 +282,7 @@ static void TrimHeadAndTailSpace(std::string& s)
     }
 
     nsi = s.find_last_not_of(' ');
-    s.erase(nsi+1);
+    s.erase(nsi + 1);
 
     return;
 }
@@ -349,9 +324,9 @@ bool HSAResourceManager::CreateAQLPacketFromBrig(
 }
 
 bool HSAResourceManager::CreateAQLFromExecutable(
-            const std::string&            kernelSymbol,
-            const bool                    bCreateSignal,
-            hsa_kernel_dispatch_packet_t& aql)
+    const std::string&            kernelSymbol,
+    const bool                    bCreateSignal,
+    hsa_kernel_dispatch_packet_t& aql)
 {
     if (0 == m_executable.handle)
     {
@@ -360,6 +335,7 @@ bool HSAResourceManager::CreateAQLFromExecutable(
     }
 
     bool ret = InitAQL(aql);
+
     if (!ret)
     {
         std::cerr << "Error in HSAResourceManager::CreateAQLFromExecutable(): InitAQL() failed.\n";
@@ -368,7 +344,7 @@ bool HSAResourceManager::CreateAQLFromExecutable(
 
     // Get symbol handle
     hsa_executable_symbol_t symbolOffset;
-    hsa_status_t status = hsa_executable_get_symbol(m_executable, NULL, kernelSymbol.c_str(), ms_gpu, 0, &symbolOffset);
+    hsa_status_t status = hsa_executable_get_symbol(m_executable, NULL, kernelSymbol.c_str(), ms_gpu.m_device, 0, &symbolOffset);
 
     if (!HSA_CHECK_STATUS(status))
     {
@@ -378,7 +354,7 @@ bool HSAResourceManager::CreateAQLFromExecutable(
 
     // Get code object handle
     status = hsa_executable_symbol_get_info(
-                symbolOffset, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, &aql.kernel_object);
+                 symbolOffset, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, &aql.kernel_object);
 
     if (!HSA_CHECK_STATUS(status) || aql.kernel_object == 0)
     {
@@ -388,10 +364,21 @@ bool HSAResourceManager::CreateAQLFromExecutable(
 
     // Get private segment size
     status = hsa_executable_symbol_get_info(
-                symbolOffset, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE, &aql.private_segment_size);
+                 symbolOffset, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE, &aql.private_segment_size);
+
     if (!HSA_CHECK_STATUS(status))
     {
         std::cerr << "hsa_executable_symbol_get_info: query private_segment_size failed.\n";
+        return false;
+    }
+
+    // Get kernel args size
+    status = hsa_executable_symbol_get_info(
+                 symbolOffset, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_SIZE, &m_maxArgSize);
+
+    if (!HSA_CHECK_STATUS(status))
+    {
+        std::cerr << "hsa_executable_symbol_get_info: query kernelarg_segment_size failed.\n";
         return false;
     }
 
@@ -417,7 +404,9 @@ bool HSAResourceManager::Finalize(const void*                         pBRIG,
         std::cerr << "Error in HSAResourceManager::Finalize(): pBrig cannot be NULL.\n";
         return false;
     }
+
     hsa_status_t status;
+
     if (0 != m_codeObj.handle)
     {
         status = hsa_code_object_destroy(m_codeObj);
@@ -427,17 +416,20 @@ bool HSAResourceManager::Finalize(const void*                         pBRIG,
             std::cerr << "Error in HSAResourceManager::Finalize(): Fail to destroy previous codeObj.\n";
             return false;
         }
+
         m_codeObj.handle = 0;
     }
 
     if (0 != m_executable.handle)
     {
         status = hsa_executable_destroy(m_executable);
+
         if (!HSA_CHECK_STATUS(status))
         {
             std::cerr << "Failed to destroy previous executable\n";
             return false;
         }
+
         m_executable.handle = 0;
     }
 
@@ -445,20 +437,20 @@ bool HSAResourceManager::Finalize(const void*                         pBRIG,
     hsa_ext_program_t program = {0};
 #if defined(_WIN64) || defined(_LP64)
     status = hsa_ext_program_create(
-                              HSA_MACHINE_MODEL_LARGE,
-                              HSA_PROFILE_FULL,
-                              HSA_DEFAULT_FLOAT_ROUNDING_MODE_ZERO,
-                              "-g",
-                              &program
-                          );
+                 HSA_MACHINE_MODEL_LARGE,
+                 ms_gpu.m_profile,
+                 HSA_DEFAULT_FLOAT_ROUNDING_MODE_ZERO,
+                 "-g",
+                 &program
+             );
 #else
     status = hsa_ext_program_create(
-                              HSA_MACHINE_MODEL_SMALL,
-                              HSA_PROFILE_FULL,
-                              HSA_DEFAULT_FLOAT_ROUNDING_MODE_ZERO,
-                              "-g",
-                              &program
-                          );
+                 HSA_MACHINE_MODEL_SMALL,
+                 ms_gpu.m_profile,
+                 HSA_DEFAULT_FLOAT_ROUNDING_MODE_ZERO,
+                 "-g",
+                 &program
+             );
 #endif
 
     if (!HSA_CHECK_STATUS(status) || 0 == program.handle)
@@ -479,7 +471,8 @@ bool HSAResourceManager::Finalize(const void*                         pBRIG,
 
     // Finalize hsail program --------------------------------------------------------
     hsa_isa_t isa;
-    status = hsa_agent_get_info(ms_gpu, HSA_AGENT_INFO_ISA, &isa);
+    status = hsa_agent_get_info(ms_gpu.m_device, HSA_AGENT_INFO_ISA, &isa);
+
     if (!HSA_CHECK_STATUS(status))
     {
         std::cerr << "Error in HSAResourceManager::Finalize(): Fail to get ISA.\n";
@@ -506,15 +499,17 @@ bool HSAResourceManager::Finalize(const void*                         pBRIG,
     }
 
     status = hsa_ext_program_destroy(program);
+
     if (!HSA_CHECK_STATUS(status))
     {
         std::cerr << "Error in HSAResourceManager::Finalize(): Failed to destroy program.\n";
     }
+
     program.handle = 0;
 
     // Create executable
     status = hsa_executable_create(
-                 HSA_PROFILE_FULL, HSA_EXECUTABLE_STATE_UNFROZEN, "", &m_executable);
+                 ms_gpu.m_profile, HSA_EXECUTABLE_STATE_UNFROZEN, "", &m_executable);
 
     if (!HSA_CHECK_STATUS(status))
     {
@@ -523,7 +518,7 @@ bool HSAResourceManager::Finalize(const void*                         pBRIG,
     }
 
     // Load code object.
-    status = hsa_executable_load_code_object(m_executable, ms_gpu, m_codeObj, NULL);
+    status = hsa_executable_load_code_object(m_executable, ms_gpu.m_device, m_codeObj, NULL);
 
     if (!HSA_CHECK_STATUS(status))
     {
@@ -564,11 +559,19 @@ bool HSAResourceManager::CopyKernelDispatchPacket(
 
 bool HSAResourceManager::AppendKernelArgs(const void* pAddr, const std::size_t size, const std::size_t offsetSize)
 {
-    if (m_argsSize == 0)
+    if (NULL == m_pArgsBuff)
     {
+        m_pArgsBuff = reinterpret_cast<unsigned char*>(AllocateSysMemory(m_maxArgSize));
+
+        if (NULL == m_pArgsBuff)
+        {
+            std::cerr << "Error in AppendKernelArgs(): Fail to AllocateSysMemory for argument buffer.\n";
+            return false;
+        }
+
         // The first time call this function, need to add offset arguments first.
         m_argsSize += offsetSize;
-        memset(m_argsBuff, 0x0, m_argsSize);
+        memset(m_pArgsBuff, 0x0, m_maxArgSize);
     }
 
     if (NULL == pAddr)
@@ -577,7 +580,13 @@ bool HSAResourceManager::AppendKernelArgs(const void* pAddr, const std::size_t s
         return false;
     }
 
-    memcpy(m_argsBuff + m_argsSize, pAddr, size);
+    if (m_argsSize + size > m_maxArgSize)
+    {
+        std::cerr << "Error in AppendKernelArgs(): Exceed argument buffer size.\n";
+        return false;
+    }
+
+    memcpy(m_pArgsBuff + m_argsSize, pAddr, size);
     m_argsSize += size;
 
     return true;
@@ -585,15 +594,13 @@ bool HSAResourceManager::AppendKernelArgs(const void* pAddr, const std::size_t s
 
 bool HSAResourceManager::RegisterKernelArgsBuffer(hsa_kernel_dispatch_packet_t& aql)
 {
-    hsa_status_t status = hsa_memory_register(m_argsBuff, m_argsSize);
-    if (!HSA_CHECK_STATUS(status))
+    if (NULL == m_pArgsBuff)
     {
-        std::cerr << "Error in HSAResourceManager::SetupKernelArgs(): Register args buffer memory failed.\n";
-        aql.kernarg_address = NULL;
+        std::cerr << "Error in RegisterKernelArgsBuffer(): argument buffer hasn't been allocated yet." << std::endl;
         return false;
     }
 
-    aql.kernarg_address = m_argsBuff;
+    aql.kernarg_address = m_pArgsBuff;
     return true;
 }
 
@@ -606,18 +613,12 @@ bool HSAResourceManager::DeregisterKernelArgsBuffer()
     }
 
     bool ret = true;
-    hsa_status_t status = hsa_memory_deregister(m_argsBuff, m_argsSize);
-
-    if (!HSA_CHECK_STATUS(status))
-    {
-        ret  = false;
-        std::cerr << "Error in HSAResourceManager::DeregisterKernelBuffer(): deregister kernel args buffer failed.\n";
-    }
-    else
-    {
-        memset(m_argsBuff, 0, gs_MAX_ARGS_BUFF_SIZE);
-        m_argsSize = 0;
-    }
+    memset(m_pArgsBuff, 0, m_maxArgSize);
+    m_argsSize = 0;
+    m_maxArgSize = 0;
+    hsa_status_t status = hsa_memory_free(m_pArgsBuff);
+    ret = HSA_CHECK_STATUS(status);
+    m_pArgsBuff = NULL;
 
     return ret;
 }
@@ -671,7 +672,7 @@ bool HSAResourceManager::WaitForCompletion(hsa_signal_t& completionSignal, uint6
         hsa_amd_profiling_dispatch_time_t dispatch_times;
         dispatch_times.start = 0;
         dispatch_times.end = 0;
-        hsa_status_t status = hsa_amd_profiling_get_dispatch_time(ms_gpu, completionSignal, &dispatch_times);
+        hsa_status_t status = hsa_amd_profiling_get_dispatch_time(ms_gpu.m_device, completionSignal, &dispatch_times);
 
         if (!HSA_CHECK_STATUS(status))
         {
@@ -862,11 +863,98 @@ bool HSAResourceManager::DestroyQueue()
     return ret;
 }
 
+void* HSAResourceManager::AllocateCoarseLocalMemory(size_t size)
+{
+    if (0 == ms_gpu.coarseRegion.handle)
+    {
+        std::cerr << "AllocateCoarseLocalMemory(): No coarse memory region present, exit" << std::endl;
+        return NULL;
+    }
+
+    void* pBuffer = NULL;
+    hsa_status_t status = hsa_memory_allocate(ms_gpu.coarseRegion, size, &pBuffer);
+    return HSA_CHECK_STATUS(status) ? pBuffer : NULL;
+}
+
+void* HSAResourceManager::AllocateSysMemory(size_t size)
+{
+    if (0 == ms_gpu.kernargRegion.handle)
+    {
+        std::cerr << "AllocateSysMemory(): No kernel arg region present, exit." << std::endl;
+        return NULL;
+    }
+
+    void* pBuffer = NULL;
+    hsa_status_t status = hsa_memory_allocate(ms_gpu.kernargRegion, size, &pBuffer);
+    return HSA_CHECK_STATUS(status) ? pBuffer : NULL;
+}
+
+bool HSAResourceManager::FreeHSAMemory(void* pBuffer)
+{
+    if (NULL == pBuffer)
+    {
+        return true;
+    }
+
+    return HSA_CHECK_STATUS(hsa_memory_free(pBuffer));
+}
+
+bool HSAResourceManager::CopyHSAMemory(void* pDest, const void* pSrc,
+                                       std::size_t size, bool hostToDev)
+{
+    if (NULL == pDest || NULL == pSrc)
+    {
+        std::cerr << "HSAResourceManager::CopyHSAMemory(): Input source or destination buffer cannot be NULL.\n";
+        return false;
+    }
+
+    if (0 == size)
+    {
+        std::cout << "Copy size is 0, nothing need to be done.\n";
+        return 0;
+    }
+
+    void* pBuffer = (hostToDev) ? pDest : const_cast<void*>(pSrc);
+    hsa_status_t status = hsa_memory_assign_agent(pBuffer, ms_gpu.m_device, HSA_ACCESS_PERMISSION_RW);
+
+    if (!HSA_CHECK_STATUS(status))
+    {
+        return false;
+    }
+
+    status = hsa_memory_copy(pDest, pSrc, size);
+    return (HSA_CHECK_STATUS(status));
+}
 
 // Accessors
-const hsa_agent_t& HSAResourceManager::GPU()
+const AgentInfo& HSAResourceManager::GPUInfo()
 {
     return ms_gpu;
+}
+
+const AgentInfo& HSAResourceManager::CPUInfo()
+{
+    return ms_cpu;
+}
+
+const hsa_agent_t& HSAResourceManager::GPU()
+{
+    return ms_gpu.m_device;
+}
+
+const hsa_agent_t& HSAResourceManager::CPU()
+{
+    return ms_cpu.m_device;
+}
+
+const uint32_t& HSAResourceManager::GPUChipID()
+{
+    return ms_gpu.m_chipID;
+}
+
+const uint32_t& HSAResourceManager::CPUChipID()
+{
+    return ms_cpu.m_chipID;
 }
 
 hsa_queue_t* const& HSAResourceManager::Queue()
@@ -926,69 +1014,132 @@ static std::string ConvertDeviceTypeToString(hsa_device_type_t dt)
     return ret;
 }
 
-hsa_status_t QueryDevice(hsa_agent_t agent, void* pData)
+hsa_status_t QueryDevice_Callback(hsa_agent_t agent, void* pData)
 {
-    if (pData != NULL)
+    if (pData == NULL)
     {
-        std::cout << "QueryDevice: Parameter is useless since this function is just a call back in order to fit in hsa_iterate_agents API.\n";
+        std::cerr << "QueryDevice_Callback: pData cannot be NULL.\n";
+        return HSA_STATUS_ERROR_INVALID_ARGUMENT;
     }
 
-    char deviceName[64];
     hsa_device_type_t deviceType;
     hsa_status_t err;
+    AgentList* pAgentList = reinterpret_cast<AgentList*>(pData);
+    AgentInfo agentInfo;
 
-    std::cout << "HSA device attributes:\n";
-
-    // Query the name of device
-    err = hsa_agent_get_info(agent, HSA_AGENT_INFO_NAME, deviceName);
-
-    if (!HSA_CHECK_STATUS(err))
-    {
-        std::cerr << "Error in QueryDevice(): Obtaining device name failed.\n";
-    }
-
-    std::cout << "\tname: " << deviceName << "\n";
-
+    agentInfo.m_device = agent;
     // Query type of device
     err = hsa_agent_get_info(agent, HSA_AGENT_INFO_DEVICE, &deviceType);
 
     if (!HSA_CHECK_STATUS(err))
     {
-        std::cerr << "Error in QueryDevice(): Obtaining device type failed.\n";
+        std::cerr << "Error in QueryDevice_Callback(): Obtaining device type failed.\n";
     }
 
-    std::cout << "\ttype: " << ConvertDeviceTypeToString(deviceType) << "\n";
+    // Query chip id
+    err = hsa_agent_get_info(agent, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_CHIP_ID), &agentInfo.m_chipID);
+
+    if (!HSA_CHECK_STATUS(err))
+    {
+        std::cerr << "Error in InitRuntime(): Obtaining chip id failed.\n";
+        agentInfo.m_chipID = 0;
+    }
+
+    // Query HSA profile of the agent.
+    err = hsa_agent_get_info(agent, HSA_AGENT_INFO_PROFILE, &agentInfo.m_profile);
+
+    if (!HSA_CHECK_STATUS(err))
+    {
+        std::cerr << "Error in InitRuntime(): Obtaining hsa profile failed.\n";
+    }
+
+    switch (deviceType)
+    {
+        case HSA_DEVICE_TYPE_CPU:
+            pAgentList->m_vecCPU.push_back(agentInfo);
+            break;
+
+        case HSA_DEVICE_TYPE_GPU:
+            pAgentList->m_vecGPU.push_back(agentInfo);
+            break;
+
+        default:
+            break;
+    }
+
+    if (gs_bVerbosePrint)
+    {
+        char deviceName[64];
+        memset(deviceName, '\0', sizeof(deviceName));
+        // Query the name of device
+        err = hsa_agent_get_info(agent, HSA_AGENT_INFO_NAME, deviceName);
+
+        if (!HSA_CHECK_STATUS(err))
+        {
+            std::cerr << "Error in QueryDevice_Callback(): Obtaining device name failed.\n";
+        }
+
+        std::cout << "HSA device attributes:\n";
+        std::cout << "\tname: " << deviceName << "\n";
+        std::cout << "\ttype: " << ConvertDeviceTypeToString(deviceType) << "\n";
+        std::cout << std::hex << "\tchip ID: 0x" << agentInfo.m_chipID << "\n";
+        std::cout << std::dec; // reset digit output format.
+        std::cout << "\tHSA profile: " << ((agentInfo.m_profile == 0) ? ("Base") : ("Full")) << "\n";
+    }
 
     return err;
 }
 
-hsa_status_t GetGPUDevice(hsa_agent_t agent, void* pData)
+
+hsa_status_t FindMemRegions_Callback(hsa_region_t region, void* data)
 {
-    hsa_status_t status = HSA_STATUS_SUCCESS;
-
-    if (pData == NULL)
+    if (NULL == data)
     {
-        status = HSA_STATUS_ERROR_INVALID_ARGUMENT;
-    }
-    else
-    {
-        hsa_device_type_t deviceType;
-        status = hsa_agent_get_info(agent, HSA_AGENT_INFO_DEVICE, &deviceType);
-
-        if (status == HSA_STATUS_SUCCESS)
-        {
-            if (deviceType == HSA_DEVICE_TYPE_GPU)
-            {
-                (*(hsa_agent_t*)pData) = agent;
-            }
-        }
-        else
-        {
-            std::cerr << "Error in GetGPUDevice(): Obtaining device type failed.\n";
-        }
+        std::cerr << "FindMemRegions(): data cannot be NULL.\n";
+        return HSA_STATUS_ERROR;
     }
 
-    return status;
+    hsa_region_global_flag_t flags;
+    hsa_region_segment_t segment_id;
+
+    hsa_status_t status = hsa_region_get_info(region, HSA_REGION_INFO_SEGMENT, &segment_id);
+    bool ret = HSA_CHECK_STATUS(status);
+
+    if (!ret)
+    {
+        return status;
+    }
+
+    if (HSA_REGION_SEGMENT_GLOBAL != segment_id)
+    {
+        return HSA_STATUS_SUCCESS;
+    }
+
+    AgentInfo* pRegion = reinterpret_cast<AgentInfo*>(data);
+    status = hsa_region_get_info(region, HSA_REGION_INFO_GLOBAL_FLAGS, &flags);
+    ret = HSA_CHECK_STATUS(status);
+
+    if (!ret)
+    {
+        return status;
+    }
+
+    if (flags & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED)
+    {
+        pRegion->coarseRegion = region;
+    }
+
+    if (flags & HSA_REGION_GLOBAL_FLAG_KERNARG)
+    {
+        pRegion->kernargRegion = region;
+    }
+
+    if (flags & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED)
+    {
+        pRegion->fineRegion = region;
+    }
+
+    return HSA_STATUS_SUCCESS;
 }
 
 bool HsaCheckStatus(hsa_status_t s)
@@ -1035,6 +1186,7 @@ std::string HsaStatusStrings(hsa_status_t s)
     hsa_status_string(s, &pszbuff);
 
     std::string str;
+
     if (pszbuff != NULL)
     {
         str = pszbuff;
@@ -1043,6 +1195,7 @@ std::string HsaStatusStrings(hsa_status_t s)
     {
         str = "hsa_status_string return NULL string. Input HSA status code: " + std::to_string(static_cast<int>(s));
     }
+
     return str;
 }
 

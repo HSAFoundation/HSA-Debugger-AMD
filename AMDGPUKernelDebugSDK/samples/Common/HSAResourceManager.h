@@ -1,50 +1,10 @@
 //==============================================================================
-// Copyright 2015 ADVANCED MICRO DEVICES, INC.
+// Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-// AMD is granting you permission to use this software and documentation(if any)
-// (collectively, the "Materials") pursuant to the terms and conditions of the
-// Software License Agreement included with the Materials.If you do not have a
-// copy of the Software License Agreement, contact your AMD representative for a
-// copy.
-//
-// You agree that you will not reverse engineer or decompile the Materials, in
-// whole or in part, except as allowed by applicable law.
-//
-// WARRANTY DISCLAIMER : THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF
-// ANY KIND.AMD DISCLAIMS ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY,
-// INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON - INFRINGEMENT, THAT THE
-// SOFTWARE WILL RUN UNINTERRUPTED OR ERROR - FREE OR WARRANTIES ARISING FROM
-// CUSTOM OF TRADE OR COURSE OF USAGE.THE ENTIRE RISK ASSOCIATED WITH THE USE OF
-// THE SOFTWARE IS ASSUMED BY YOU.Some jurisdictions do not allow the exclusion
-// of implied warranties, so the above exclusion may not apply to You.
-//
-// LIMITATION OF LIABILITY AND INDEMNIFICATION : AMD AND ITS LICENSORS WILL NOT,
-// UNDER ANY CIRCUMSTANCES BE LIABLE TO YOU FOR ANY PUNITIVE, DIRECT,
-// INCIDENTAL, INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING FROM USE OF
-// THE SOFTWARE OR THIS AGREEMENT EVEN IF AMD AND ITS LICENSORS HAVE BEEN
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.In no event shall AMD's total
-// liability to You for all damages, losses, and causes of action (whether in
-// contract, tort (including negligence) or otherwise) exceed the amount of $100
-// USD.  You agree to defend, indemnify and hold harmless AMD and its licensors,
-// and any of their directors, officers, employees, affiliates or agents from
-// and against any and all loss, damage, liability and other expenses (including
-// reasonable attorneys' fees), resulting from Your use of the Software or
-// violation of the terms and conditions of this Agreement.
-//
-// U.S.GOVERNMENT RESTRICTED RIGHTS : The Materials are provided with
-// "RESTRICTED RIGHTS." Use, duplication, or disclosure by the Government is
-// subject to the restrictions as set forth in FAR 52.227 - 14 and DFAR252.227 -
-// 7013, et seq., or its successor.Use of the Materials by the Government
-// constitutes acknowledgement of AMD's proprietary rights in them.
-//
-// EXPORT RESTRICTIONS: The Materials may be subject to export restrictions as
-//                      stated in the Software License Agreement.
-/// \author Developer Tools
+/// \author AMD Developer Tools
 /// \file
 /// \brief  HSA Runtime resource management class
 //==============================================================================
-
 #ifndef _HSA_RESOURCE_MANAGER_H_
 #define _HSA_RESOURCE_MANAGER_H_
 
@@ -54,13 +14,13 @@
 #include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
-#pragma warning(push, 3)
+    #pragma warning(push, 3)
 #endif
 #include <hsa.h>
 #include <hsa_ext_amd.h>
 #include <hsa_ext_finalize.h>
 #if defined(_WIN32) || defined(_WIN64)
-#pragma warning(pop)
+    #pragma warning(pop)
 #endif
 
 /// \brief Check status macro that also report file name and line number in application debug build.
@@ -68,14 +28,43 @@
 /// \param[in] x The status need to be check
 /// \return true if x == HSA_STATUS_SUCCESS
 #if defined (_DEBUG) || defined (DEBUG)
-#define HSA_CHECK_STATUS( x ) DevTools::HsaCheckStatus(x, __FILE__, __LINE__)
+    #define HSA_CHECK_STATUS( x ) DevTools::HsaCheckStatus(x, __FILE__, __LINE__)
 #else
-#define HSA_CHECK_STATUS( x ) DevTools::HsaCheckStatus(x)
+    #define HSA_CHECK_STATUS( x ) DevTools::HsaCheckStatus(x)
 #endif
 
 namespace DevTools
 {
 static const std::size_t gs_MAX_ARGS_BUFF_SIZE = 256;
+
+/// \brief A struct holding HSA agent (Device) information
+typedef struct AgentInfo
+{
+    // Agent device handle
+    hsa_agent_t m_device;
+
+    // Device chip ID
+    uint32_t m_chipID;
+
+    // Agent profile (FULL or BASE)
+    hsa_profile_t m_profile;
+
+    // Max size of Queue buffer
+    uint32_t m_maxQueueSize;
+
+    // Device local coarse grain memory region
+    hsa_region_t coarseRegion;
+
+    // Device local fine grain memory region
+    hsa_region_t fineRegion;
+
+    // Memory region supporting kernel arguments
+    hsa_region_t kernargRegion;
+
+    AgentInfo() : m_device({0}), m_chipID(0), m_maxQueueSize(0),
+              coarseRegion({0}), fineRegion({0}), kernargRegion({0})
+    {}
+} AgentInfo;
 
 class HSAResourceManager
 {
@@ -126,11 +115,11 @@ public:
     /// \param[in]  finalizerFlags  Additional compilation flags for finalizer.
     /// \return true if there is no error
     bool CreateAQLPacketFromBrig(
-            const void*                   pBRIG,
-            const std::string&            kernelSymbol,
-            const bool                    bCreateSignal,
-            hsa_kernel_dispatch_packet_t& aqlPacketOut,
-            const std::string&            finalizerFlags = "");
+        const void*                   pBRIG,
+        const std::string&            kernelSymbol,
+        const bool                    bCreateSignal,
+        hsa_kernel_dispatch_packet_t& aqlPacketOut,
+        const std::string&            finalizerFlags = "");
 
     /// \brief Create a default aql packet from the existing executable with relative kernel symbol
     ///
@@ -141,9 +130,9 @@ public:
     ///                             information will be put into.
     /// \return true if there is no error
     bool CreateAQLFromExecutable(
-            const std::string&            kernelSymbol,
-            const bool                    bCreateSignal,
-            hsa_kernel_dispatch_packet_t& aqlPacketOut);
+        const std::string&            kernelSymbol,
+        const bool                    bCreateSignal,
+        hsa_kernel_dispatch_packet_t& aqlPacketOut);
 
     /// \brief Copy one aql packet setting to another
     ///
@@ -161,12 +150,12 @@ public:
     /// \param[in] pAddrToCopyIn The address of input kernel argument
     /// \param[in] argsSizeInBytes Size of the input kernel argument
     /// \param[in] offsetSize Depends on the source, we have additional global offset argument.
-    ///                       For now the default value is for OpenCL kernel.
+    ///                       For now the default value is for OpenCL 2.0 kernel.
     /// \return true if there is no error
     bool AppendKernelArgs(
         const void*       pAddrToCopyIn,
         const std::size_t argsSizeInBytes,
-        const std::size_t offsetSize = sizeof(uint64_t)*3);
+        const std::size_t offsetSize = sizeof(uint64_t) * 6);
 
     /// \brief Register kernel arguments buffer to the runtime
     ///
@@ -220,21 +209,70 @@ public:
     /// \return true if there is no error
     static bool DestroyQueue();
 
+    /// \brief Allocate HSA device local memory in coarse grain region, if there is.
+    ///
+    /// \param[in] size Size of memory to be allocated, in bytes
+    /// \return Pointer to the allocated memory location, NULL if fail.
+    static void* AllocateCoarseLocalMemory(size_t size);
+
+    /// \brief Allocate HSA kerenarg memory region
+    ///
+    /// \param[in] size Size of memory to be allocated, in bytes
+    /// \return Pointer to the allocated memory location, NULL if fail.
+    static void* AllocateSysMemory(size_t size);
+
+    /// \brief Free HSA memory
+    ///
+    /// \param[in] Pointer to the memory location to be freed.
+    /// \return true if there is no error.
+    static bool FreeHSAMemory(void* pBuffer);
+
+    /// \brief Copy HSA memory
+    ///
+    /// \param[in] pDest Pointer to destination memory location.
+    /// \param[in] pSrc Pointer to source memory location.
+    /// \param[in] size Size of memory to be copy, in bytes.
+    /// \param[in] hostToDev Marker to tell whether it is going to be copied from host (CPU) to device (GPU).
+    /// \return true if there is no error.
+    static bool CopyHSAMemory(void* pDest, const void* pSrc, std::size_t size, bool hostToDev);
+
+
     /// \brief return whether it has an HSA runtime initialized in it.
     ///
     /// \return true if there is already an HSA runtime.
     static bool HasRuntime();
 
     // Accessors
+    /// \brief return GPU agent info
+    ///
+    /// \return GPU agent info
+    static const AgentInfo& GPUInfo();
+
+    /// \brief return CPU agent info
+    ///
+    /// \return CPU agent info
+    static const AgentInfo& CPUInfo();
+
     /// \brief return the GPU agent device
     ///
     /// \return GPU agent device
     static const hsa_agent_t& GPU();
 
+    // Accessors
+    /// \brief return the CPU agent device
+    ///
+    /// \return GPU agent device
+    static const hsa_agent_t& CPU();
+
     /// \brief Query GPU chip ID
     ///
     /// \return GPU chip ID
     static const uint32_t& GPUChipID();
+
+    /// \brief Query CPU chip ID
+    ///
+    /// \return CPU chip ID
+    static const uint32_t& CPUChipID();
 
     /// \brief return the default queue
     ///
@@ -258,8 +296,10 @@ private:
     static bool ms_hasRuntime;
     static bool ms_profilingEnabled;
 
-    static hsa_agent_t ms_gpu;
-    static uint32_t    ms_chipID;
+    /// \todo: Inorder to support multi-GPU system we should use vector<>
+    //        (or something similar) here.
+    static AgentInfo   ms_gpu;
+    static AgentInfo   ms_cpu;
 
     static hsa_queue_t* ms_pQueue;
 
@@ -268,34 +308,10 @@ private:
 
     std::vector<hsa_signal_t> m_signals;
 
-#if defined(_WIN64) || defined(_WIN32)
-    __declspec(align(16))
-        unsigned char m_argsBuff[gs_MAX_ARGS_BUFF_SIZE];
-#else
-    __attribute__((aligned(16)))
-        unsigned char m_argsBuff[gs_MAX_ARGS_BUFF_SIZE];
-#endif
-
+    unsigned char* m_pArgsBuff;
+    std::size_t m_maxArgSize;
     std::size_t m_argsSize;
 };
-
-/// \brief Output device name and type to std::cout
-///
-/// \param[in] agent Current HSA agent
-/// \param pData Dummy argument, in order to make this function as a valid callback function to hsa_iterate_agents()
-/// \return HSA_STATUS_SUCCESS if no error
-hsa_status_t QueryDevice(
-    hsa_agent_t    agent,
-    void*          pData = NULL);
-
-/// \brief Get HSA GPU device
-///
-/// \param[in] agent Current HSA agent
-/// \param[out] pData The GPU device to be put into
-/// \return Check HSA status if any error occur
-hsa_status_t GetGPUDevice(
-    hsa_agent_t   agent,
-    void*         pData);
 
 /// \brief Check status.
 ///

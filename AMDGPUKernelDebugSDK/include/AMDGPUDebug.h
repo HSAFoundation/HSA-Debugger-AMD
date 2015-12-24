@@ -1,45 +1,5 @@
 /************************************************************************************//**
-** Copyright 2015 ADVANCED MICRO DEVICES, INC.
-**
-** AMD is granting you permission to use this software and documentation(if any)
-** (collectively, the "Materials") pursuant to the terms and conditions of the
-** Software License Agreement included with the Materials.If you do not have a
-** copy of the Software License Agreement, contact your AMD representative for a
-** copy.
-**
-** You agree that you will not reverse engineer or decompile the Materials, in
-** whole or in part, except as allowed by applicable law.
-**
-** WARRANTY DISCLAIMER : THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF
-** ANY KIND.AMD DISCLAIMS ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY,
-** INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
-** FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON - INFRINGEMENT, THAT THE
-** SOFTWARE WILL RUN UNINTERRUPTED OR ERROR - FREE OR WARRANTIES ARISING FROM
-** CUSTOM OF TRADE OR COURSE OF USAGE.THE ENTIRE RISK ASSOCIATED WITH THE USE OF
-** THE SOFTWARE IS ASSUMED BY YOU.Some jurisdictions do not allow the exclusion
-** of implied warranties, so the above exclusion may not apply to You.
-**
-** LIMITATION OF LIABILITY AND INDEMNIFICATION : AMD AND ITS LICENSORS WILL NOT,
-** UNDER ANY CIRCUMSTANCES BE LIABLE TO YOU FOR ANY PUNITIVE, DIRECT,
-** INCIDENTAL, INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING FROM USE OF
-** THE SOFTWARE OR THIS AGREEMENT EVEN IF AMD AND ITS LICENSORS HAVE BEEN
-** ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.In no event shall AMD's total
-** liability to You for all damages, losses, and causes of action (whether in
-** contract, tort (including negligence) or otherwise) exceed the amount of $100
-** USD.  You agree to defend, indemnify and hold harmless AMD and its licensors,
-** and any of their directors, officers, employees, affiliates or agents from
-** and against any and all loss, damage, liability and other expenses (including
-** reasonable attorneys' fees), resulting from Your use of the Software or
-** violation of the terms and conditions of this Agreement.
-**
-** U.S.GOVERNMENT RESTRICTED RIGHTS : The Materials are provided with
-** "RESTRICTED RIGHTS." Use, duplication, or disclosure by the Government is
-** subject to the restrictions as set forth in FAR 52.227 - 14 and DFAR252.227 -
-** 7013, et seq., or its successor.Use of the Materials by the Government
-** constitutes acknowledgement of AMD's proprietary rights in them.
-**
-** EXPORT RESTRICTIONS: The Materials may be subject to export restrictions as
-**                      stated in the Software License Agreement.
+** Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 **
 ** \author AMD Developer Tools
 ** \file
@@ -118,9 +78,9 @@ extern "C" {
 /** The AMD GPU Debug API major version. */
 #define AMDGPUDEBUG_VERSION_MAJOR 1
 /** The AMD GPU Debug API minor version. */
-#define AMDGPUDEBUG_VERSION_MINOR 1
+#define AMDGPUDEBUG_VERSION_MINOR 2
 /** The AMD GPU Debug API build number. */
-#define AMDGPUDEBUG_VERSION_BUILD 3334
+#define AMDGPUDEBUG_VERSION_BUILD 2664
 
 /** The maximum number of lanes in a wavefront for the GPU device. */
 #define HWDBG_WAVEFRONT_SIZE 64
@@ -129,7 +89,7 @@ extern "C" {
 /********************************* ENUMERATIONS *********************************/
 
 /** The enumeration values of the possible return status from the provided API. */
-/** \warning Not all the enum values are used in May 2015 Alpha release */
+/** \warning Not all the enum values are supported currently */
 typedef enum
 {
     /** the API was executed successfully */
@@ -179,6 +139,10 @@ typedef enum
 
     /** HwDbgInit has not been called */
     HWDBG_STATUS_NOT_INITIALIZED           = 0x0F,
+
+    /** The debug context was created with unsupported behavior flags for the API*/
+    HWDBG_STATUS_INVALID_BEHAVIOR_STATE    = 0x10
+
 } HwDbgStatus;
 
 /** The list of debugger commands for the HwDbgContinueEvent API to advance to the
@@ -195,7 +159,7 @@ typedef enum
 } HwDbgAPIType;
 
 /** The enumeration values of possible breakpoint types supported by the library. */
-/** \warning This is not supported in May 2015 Alpha release */
+/** \warning This is not yet supported */
 typedef enum
 {
     HWDBG_BREAKPOINT_TYPE_NONE = 0x0,  /**< no breakpoint type */
@@ -214,7 +178,7 @@ typedef enum
 } HwDbgEventType;
 
 /** The list of possible access modes of data breakpoints supported. */
-/** \warning This is not supported in May 2015 Alpha release */
+/** \warning This is not yet supported */
 typedef enum
 {
     /** read operations only */
@@ -246,7 +210,7 @@ typedef void* HwDbgContextHandle;
 typedef void* HwDbgCodeBreakpointHandle;
 
 /** A unique handle for a data breakpoint (returned by HwDbgCreateDataBreakpoint). */
-/** \warning This is not supported in May 2015 Alpha release */
+/** \warning This is not yet supported */
 typedef void* HwDbgDataBreakpointHandle;
 
 
@@ -261,7 +225,7 @@ typedef struct
 } HwDbgDim3;
 
 /** A structure to hold all the info required to create a single data breakpoint. */
-/** \warning This is not supported in May 2015 Alpha release */
+/** \warning This is not yet supported */
 typedef struct
 {
     /** the relevant mode for the data breakpoint */
@@ -293,16 +257,30 @@ typedef struct
     HwDbgCodeAddress          codeAddress;
 
     /** the data breakpoint handle */
-    /** \warning This is not supported in May 2015 Alpha release */
+    /** \warning This is not yet supported */
     HwDbgDataBreakpointHandle dataBreakpointHandle;
 
     /** the type of breakpoint that was signaled */
-    /** \warning This is not supported in May 2015 Alpha release */
+    /** \warning This is not yet supported */
     HwDbgBreakpointType       breakpointType;
 
     /** additional data that can be returned */
     void*                     pOtherData;
 } HwDbgWavefrontInfo;
+
+/** The enumerated bitfield values of supported behavior, the flags can be used internally to optimize behavior */
+typedef enum
+{
+    /** Default flag, used to debug GPU dispatches */
+    HWDBG_BEHAVIOR_NONE                         = 0x00,
+
+    /** Disable GPU dispatch debugging.
+     ** However this behavior mode allows extraction of kernel binaries and breakpoint management.
+     ** Allowed API calls are HwDbg[Begin or End]DebugContext, HwDbgGetKernelBinary,
+     ** HwDbg[*CodeBreakpoint*] and HwDbg[*DataBreakpoint*] */
+    HWDBG_BEHAVIOR_DISABLE_DISPATCH_DEBUGGING   = 0x01
+
+}HwDbgBehaviorType;
 
 /** A structure to hold the device state as an input to the HwDbgBeginDebugContext */
 typedef struct
@@ -314,8 +292,11 @@ typedef struct
     void* pPacket;
 
     /** set to packet_id from the pre-dispatch callback function */
-    /** \warning This is not supported in May 2015 Alpha release */
+    /** \warning This is not yet supported */
     uint64_t packetId;
+
+    /** flags that the control the behavior of the debug context */
+    uint32_t behaviorFlags;
 } HwDbgState;
 
 
@@ -352,6 +333,8 @@ typedef void (*HwDbgLoggingCallback)(      void*        pUserData,
 ** Extra diagnostics output about the operation of the AMD GPU Debug API may
 ** be enabled by registering a client callback function through this API.
 **
+** This function can be called prior to a HwDbgInit call.
+**
 ** \param[in] types      specifies the logging message types to be registered
 **                        (a combination of HwDbgLogType enum value)
 ** \param[in] pCallback  specifies the logging callback function
@@ -376,6 +359,8 @@ HwDbgSetLoggingCallback(uint32_t             types,
 /************************************************************************************//**
 ** Retrieve the library version (major, minor and build) number.
 **
+** This function can be called prior to a HwDbgInit call.
+**
 ** \param[out] pVersionMajorOut  returns the API version major number
 ** \param[out] pVersionMinorOut  returns API version minor number
 ** \param[out] pVersionBuildOut  returns API build number
@@ -392,6 +377,8 @@ HwDbgGetAPIVersion(uint32_t* pVersionMajorOut,
 
 /************************************************************************************//**
 ** Retrieve the driver API type of the loaded library.
+**
+** This function can be called prior to a HwDbgInit call.
 **
 ** \param[out] pAPITypeOut  returns the API type of the library
 **
@@ -410,15 +397,22 @@ HwDbgGetAPIType(HwDbgAPIType* pAPITypeOut);
 ** Initialize the GPU debug engine.
 **
 ** This function should be called right after the debugged process starts.
-** For hsa, this is in the Runtime's OnLoad callback.
+** For hsa, this is in the HSA Runtime's OnLoad callback.
+**
+** \param[in] pApiTable   Used by HSA: Pass in the pointer to the hsa api table
+**                          provided by the HSA Runtime's OnLoad callback.
+**                          Can be NULL (won't support full DBE functionality).
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS             On success
+** \retval HWDBG_STATUS_SUCCESS        On success
+** \retval HWDBG_STATUS_OUT_OF_MEMORY  If fail to allocate necessary memory
+** \retval HWDBG_STATUS_ERROR          If called multiple times without a
+**                                      corresponding HwDbgShutDown
 **
 ** \see HwDbgShutDown
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
-HwDbgInit();
+HwDbgInit(void* pApiTable);
 
 /************************************************************************************//**
 ** Shut down the GPU debug engine.
@@ -427,9 +421,10 @@ HwDbgInit();
 ** For hsa, this is in the Runtime's OnUnload callback.
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS             On success
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called without a corresponding HwDbgInit
 **
-** \see HwDbgShutDown
+** \see HwDbgInit
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
 HwDbgShutDown();
@@ -455,6 +450,7 @@ HwDbgShutDown();
 ** \retval HWDBG_STATUS_ERROR               If an internal error occurs
 **                                           (check the log output for details)
 ** \retval HWDBG_STATUS_UNSUPPORTED         If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED     If called prior to a HwDbgInit call
 **
 ** \see HwDbgEndDebugContext
 ****************************************************************************************/
@@ -476,10 +472,11 @@ HwDbgBeginDebugContext(const HwDbgState          state,
 **                            will be terminated and deleted
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If hDebugContext is an invalid handle
-** \retval HWDBG_STATUS_UNDEFINED       If kernel execution has not yet completed
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If hDebugContext is an invalid handle
+** \retval HWDBG_STATUS_UNDEFINED        If kernel execution has not yet completed
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
 ** \see HwDbgBeginDebugContext
 ****************************************************************************************/
@@ -502,13 +499,15 @@ HwDbgEndDebugContext(HwDbgContextHandle hDebugContext);
 ** \param[out] pEventTypeOut  The resulting event type
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_NULL_POINTER    If an input argument is NULL
-** \retval HWDBG_STATUS_UNDEFINED       If the kernel has completed execution
-** \retval HWDBG_STATUS_ERROR           If an internal error occurs
-**                                       (check the log output for details)
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_NULL_POINTER     If an input argument is NULL
+** \retval HWDBG_STATUS_UNDEFINED        If the kernel has completed execution
+** \retval HWDBG_STATUS_ERROR            If an internal error occurs
+**                                        (check the log output for details)
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
+** \retval HWDBG_STATUS_INVALID_BEHAVIOR If the context behavior flags are invalid
 **
 ** \see HwDbgContinueEvent
 ****************************************************************************************/
@@ -537,6 +536,8 @@ HwDbgWaitForEvent(      HwDbgContextHandle hDebugContext,
 ** \retval HWDBG_STATUS_ERROR              If an internal error occurs
 **                                          (check the log output for details)
 ** \retval HWDBG_STATUS_UNSUPPORTED        If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED    If called prior to a HwDbgInit call
+** \retval HWDBG_STATUS_INVALID_BEHAVIOR   If the context behavior flags are invalid
 **
 ** \see HwDbgWaitForEvent
 ****************************************************************************************/
@@ -563,13 +564,14 @@ HwDbgContinueEvent(      HwDbgContextHandle hDebugContext,
 **                              kernel dispatch that the breakpoint was created for
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_NULL_POINTER    If the input argument is NULL
-** \retval HWDBG_STATUS_ERROR           If the codeAddress is invalid (not 4-byte
-**                                       aligned or out of range) or has been
-**                                       inserted before
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_NULL_POINTER     If the input argument is NULL
+** \retval HWDBG_STATUS_ERROR            If the codeAddress is invalid (not 4-byte
+**                                        aligned or out of range) or has been
+**                                        inserted before
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
 ** \see HwDbgDeleteCodeBreakpoint, HwDbgDeleteAllCodeBreakpoints,
 **      HwDbgGetCodeBreakpointAddress
@@ -589,11 +591,12 @@ HwDbgCreateCodeBreakpoint(      HwDbgContextHandle         hDebugContext,
 **                             returned in future calls to HwDbgCreateCodeBreakpoint
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_ERROR           If breakpoint handle is invalid or 
-**                                       contains an invalid code address
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_ERROR            If breakpoint handle is invalid or
+**                                        contains an invalid code address
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
 ** \see HwDbgCreateCodeBreakpoint, HwDbgDeleteAllCodeBreakpoints,
 **      HwDbgGetCodeBreakpointAddress
@@ -609,9 +612,10 @@ HwDbgDeleteCodeBreakpoint(HwDbgContextHandle        hDebugContext,
 **                            from HwDbgBeginDebugContext API
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
 ** \see HwDbgCreateCodeBreakpoint, HwDbgDeleteCodeBreakpoint,
 **      HwDbgGetCodeBreakpointAddress
@@ -628,12 +632,13 @@ HwDbgDeleteAllCodeBreakpoints(HwDbgContextHandle hDebugContext);
 ** \param[out] pCodeAddressOut  returns the code address (program counter)
 **
 ** \return HwDbgStatus
-** \return HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_NULL_POINTER    If the input argument is NULL
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \return HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_NULL_POINTER     If the input argument is NULL
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
-** \see HwDbgCreateCodeBreakpoint, HwDbgDeleteCodeBreakpoint, 
+** \see HwDbgCreateCodeBreakpoint, HwDbgDeleteCodeBreakpoint,
 **      HwDbgDeleteAllCodeBreakpoints
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
@@ -664,12 +669,13 @@ HwDbgGetCodeBreakpointAddress(const HwDbgContextHandle        hDebugContext,
 ** \param[out] pBinarySizeOut  returns the binary size in bytes
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_NULL_POINTER    If the input argument is NULL
-** \retval HWDBG_STATUS_DRIVER_ERROR    If the retrieved kernel binary is NULL
-**                                       or the binary size is 0
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_NULL_POINTER     If the input argument is NULL
+** \retval HWDBG_STATUS_DRIVER_ERROR     If the retrieved kernel binary is NULL
+**                                        or the binary size is 0
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
 HwDbgGetKernelBinary(const HwDbgContextHandle hDebugContext,
@@ -693,12 +699,14 @@ HwDbgGetKernelBinary(const HwDbgContextHandle hDebugContext,
 ** \param[out] pNumWavefrontsOut   returns the number of active wavefronts
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_NULL_POINTER    If the ppWaveInfoOut is NULL
-** \retval HWDBG_STATUS_UNDEFINED       If it is called after not receiving
-**                                       a HWDBG_EVENT_POST_BREAKPOINT event
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_NULL_POINTER     If the ppWaveInfoOut is NULL
+** \retval HWDBG_STATUS_UNDEFINED        If it is called after not receiving
+**                                        a HWDBG_EVENT_POST_BREAKPOINT event
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
+** \retval HWDBG_STATUS_INVALID_BEHAVIOR If the context behavior flags are invalid
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
 HwDbgGetActiveWavefronts(const HwDbgContextHandle   hDebugContext,
@@ -708,8 +716,7 @@ HwDbgGetActiveWavefronts(const HwDbgContextHandle   hDebugContext,
 /************************************************************************************//**
 ** Read data from a memory region.
 **
-** \warning For May 2015 Alpha release, only private memory region (IMR_Scratch = 1)
-**          is supported.
+** \warning Only private memory region (IMR_Scratch = 1) is currently supported.
 **
 ** Must only be called after receiving a HWDBG_EVENT_POST_BREAKPOINT event from
 ** HwDbgWaitForEvent API.
@@ -735,10 +742,12 @@ HwDbgGetActiveWavefronts(const HwDbgContextHandle   hDebugContext,
 ** \param[out] pNumBytesOut    returns the number of bytes written into pMemOut
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_NULL_POINTER    If an input argument is NULL
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_NULL_POINTER     If an input argument is NULL
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
+** \retval HWDBG_STATUS_INVALID_BEHAVIOR If the context behavior flags are invalid
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
 HwDbgReadMemory(const HwDbgContextHandle hDebugContext,
@@ -762,11 +771,13 @@ HwDbgReadMemory(const HwDbgContextHandle hDebugContext,
 **                             from HwDbgBeginDebugContext API
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_ERROR           If an internal error occurs
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_ERROR            If an internal error occurs
 **                                        (check the log output for details)
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
+** \retval HWDBG_STATUS_INVALID_BEHAVIOR If the context behavior flags are invalid
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
 HwDbgBreakAll(const HwDbgContextHandle hDebugContext);
@@ -781,10 +792,12 @@ HwDbgBreakAll(const HwDbgContextHandle hDebugContext);
 **                             from HwDbgBeginDebugContext API
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_ERROR           If the dispatch has not been terminated
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_ERROR            If the dispatch has not been terminated
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
+** \retval HWDBG_STATUS_INVALID_BEHAVIOR If the context behavior flags are invalid
 ****************************************************************************************/
 extern HWDBG_API_ENTRY HwDbgStatus HWDBG_API_CALL
 HwDbgKillAll(const HwDbgContextHandle hDebugContext);
@@ -794,8 +807,8 @@ HwDbgKillAll(const HwDbgContextHandle hDebugContext);
 
 /************************************************************************************//**
 ** Create a data breakpoint.
-** 
-** \warning This is not supported in May 2015 Alpha release
+**
+** \warning This is not yet supported
 **
 ** \param[in]  hDebugContext       specifies the context handle received
 **                                  from HwDbgBeginDebugContext API
@@ -815,6 +828,7 @@ HwDbgKillAll(const HwDbgContextHandle hDebugContext);
 ** \retval HWDBG_STATUS_NULL_POINTER      If the input argument or address is NULL
 ** \retval HWDBG_STATUS_OUT_OF_RESOURCES  If cannot be created due to hw limits
 ** \retval HWDBG_STATUS_UNSUPPORTED       If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED   If called prior to a HwDbgInit call
 **
 ** \see HwDbgDeleteDataBreakpoint, HwDbgDeleteAllDataBreakpoints,
 **      HwDbgGetDataBreakpointInfo
@@ -827,7 +841,7 @@ HwDbgCreateDataBreakpoint(      HwDbgContextHandle         hDebugContext,
 /************************************************************************************//**
 ** Delete a data breakpoint.
 **
-** \warning This is not supported in May 2015 Alpha release
+** \warning This is not yet supported
 **
 ** \param[in] hDebugContext    specifies the context handle received
 **                              from HwDbgBeginDebugContext API
@@ -836,9 +850,10 @@ HwDbgCreateDataBreakpoint(      HwDbgContextHandle         hDebugContext,
 **                              future calls to HwDbgCreateCodeBreakpoint
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
 ** \see HwDbgCreateDataBreakpoint, HwDbgDeleteAllDataBreakpoints,
 **      HwDbgGetDataBreakpointInfo
@@ -850,7 +865,7 @@ HwDbgDeleteDataBreakpoint(HwDbgContextHandle        hDebugContext,
 /************************************************************************************//**
 ** Delete all data breakpoints.
 **
-** \warning This is not supported in May 2015 Alpha release
+** \warning This is not yet supported
 **
 ** After this call, all data breakpoint handles created prior for the debug
 ** context will be invalid.
@@ -859,9 +874,10 @@ HwDbgDeleteDataBreakpoint(HwDbgContextHandle        hDebugContext,
 **                            from HwDbgBeginDebugContext API
 **
 ** \return HwDbgStatus
-** \retval HWDBG_STATUS_SUCCESS         On success
-** \retval HWDBG_STATUS_INVALID_HANDLE  If the input hDebugContext is invalid
-** \retval HWDBG_STATUS_UNSUPPORTED     If the API has not been implemented
+** \retval HWDBG_STATUS_SUCCESS          On success
+** \retval HWDBG_STATUS_INVALID_HANDLE   If the input hDebugContext is invalid
+** \retval HWDBG_STATUS_UNSUPPORTED      If the API has not been implemented
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
 ** \see HwDbgCreateDataBreakpoint, HwDbgDeleteDataBreakpoint,
 **      HwDbgGetDataBreakpointInfo
@@ -872,13 +888,14 @@ HwDbgDeleteAllDataBreakpoints(HwDbgContextHandle hDebugContext);
 /************************************************************************************//**
 ** Retrieve the data breakpoint information from a data breakpoint handle.
 **
-** \warning This is not supported in May 2015 Alpha release
+** \warning This is not yet supported
 **
-** \param[in]  hDebugContext           specifies the context handle received
-**                                      from HwDbgBeginDebugContext API
-** \param[in]  hDataBreakpoint         specifies the data breakpoint handle
-** \param[out] pDataBreakpointInfoOut  returns a structure containing
-**                                      information of the data breakpoint
+** \param[in]  hDebugContext             specifies the context handle received
+**                                        from HwDbgBeginDebugContext API
+** \param[in]  hDataBreakpoint           specifies the data breakpoint handle
+** \param[out] pDataBreakpointInfoOut    returns a structure containing
+**                                        information of the data breakpoint
+** \retval HWDBG_STATUS_NOT_INITIALIZED  If called prior to a HwDbgInit call
 **
 ** \return HwDbgStatus
 ** \return HWDBG_STATUS_SUCCESS         On success

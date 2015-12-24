@@ -1,4 +1,4 @@
-# HSA Debugger September 2015 Beta Release (version 0.6)
+# HSA Debugger December 2015 Release (version 1.0)
 
 ## Overview
 The HSA Debugger provides a gdb-based debugging environment for debugging host application and HSAIL kernels running on AMD HSA platforms.  The kernel programming language currently supported is HSAIL 1.0.  There are two packages included in this Alpha Release:
@@ -23,6 +23,12 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
 * View active GPU states (active work-groups, work-items and wavefronts information)
 
 <A NAME="WhatsNew">
+## What's New in December 2015 Release (version 1.0)
+* First public release supporting AMD Kaveri and Carrizo
+* Open source: [GDB](https://github.com/HSAFoundation/HSA-Debugger-GDB-Source-AMD), [AMD GPU Debug SDK](https://github.com/HSAFoundation/HSA-Debugger-Source-AMD)
+* Adds ability to set and run to HSAIL kernel source breakpoints without setting HSAIL function breakpoints first
+* Many bug fixes and stability improvements
+
 ## What's New in September 2015 Beta Release (version 0.6)
 * Initial AMD Carrizo support (alpha).
 * Improves support for HSAIL-level debugging for Kalmar applications.
@@ -31,7 +37,7 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
 * Improves support for running hsail-gdb on hsa cluster machines.
 * Improves support when terminating application or hsail-gdb abruptly.
 * Adds support to step into the kernel from the kernel function breakpoint using the gdb *next* command.
-* Add a utility program *amd-debug-lock* to determine whether the hsa system is in a gpu locked state (requiring a system reboot to release the lock).
+* Adds a utility program *amd-debug-lock* to determine whether the hsa system is in a gpu locked state (requiring a system reboot to release the lock).
 * Adds debian installation packages.
 * Adds common prefix name for all log files generated using *HSAIL_GDB_ENABLE_LOG* environment variable.
 * Enables running hsail-gdb when it is installed in a read only folder
@@ -48,13 +54,13 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
 
 <A NAME="System">
 ## System Requirements
-* Hardware: AMD Kaveri (beta support) and Carrizo (alpha support) APUs that implement HSA (i.e. A10-7850K, A10-7800, A10-8700, etc.)
+* Hardware: AMD Kaveri and Carrizo APUs that implement HSA (i.e. A10-7850K, A10-7800, A10-8700, etc.)
   * Refer to the [HSA Platforms & Installation wiki page](https://github.com/HSAFoundation/HSA-Docs-AMD/wiki/HSA-Platforms-&-Installation) for additional information.
 * OS: 64-bit Ubuntu 14.04
 * HSA Runtime: [AMD HSA Runtime September 2015 release v1.0.3](https://github.com/HSAFoundation/HSA-Runtime-AMD)
 * HSA Driver: [AMD HSA Drivers v1.6](https://github.com/HSAFoundation/HSA-Drivers-Linux-AMD)
 
-HSAIL applications must use the [LibHSAIL from July 27th 2015 or newer](https://github.com/HSAFoundation/HSAIL-Tools) built with *BUILD_WITH_LIBBRIGDWARF=1* to assemble HSAIL text to BRIG.
+HSAIL applications must use the [LibHSAIL from Dec 3rd 2015 or newer](https://github.com/HSAFoundation/HSAIL-Tools) built with *BUILD_WITH_LIBBRIGDWARF=1* to assemble HSAIL text to BRIG.
 
 <A NAME="Package">
 ## Package Contents
@@ -78,8 +84,8 @@ The directory structure of the HSA Debugger packages:
     * *hsail-gdb*, *amd-gdb*, *.gdbinit*
   * *LICENSE.txt*
 * *ubuntu*
-  * *amd-gpu-kernel-debug-sdk_0.6.862_amd64.deb*
-  * *amd-hsail-gdb_0.6.862_amd64.deb*
+  * *amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb*
+  * *amd-hsail-gdb_1.0.908_amd64.deb*
   
 If you download the HSA Debugger packages or files separately, you must create the same directory structure as shown above in order to run hsail-gdb successfully.
   
@@ -93,8 +99,8 @@ First, make sure that the HSA system is setup correctly
     As part of the HSAIL debugger package, there is a sample HSAIL *MatrixMultiplication* that can be used with hsail-gdb.
   
 ###HSA Debugger Installation
-1. Download the debian packages (*amd-gpu-kernel-debug-sdk_0.6.862_amd64.deb* and *amd-hsail-gdb_0.6.862_amd64.deb*)
-    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_0.6.862_amd64.deb amd-hsail-gdb_0.6.862_amd64.deb`
+1. Download the debian packages (*amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb* and *amd-hsail-gdb_1.0.908_amd64.deb*)
+    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb amd-hsail-gdb_1.0.908_amd64.deb`
 	  * The installed files will be placed in */opt/amd/hsa-debugger* folder.
 2. Ensure the environment variable *LD_LIBRARY_PATH* contains the directory of the HSA Runtime library (the default is */opt/hsa/lib*).  You can add the following line into *.bashrc* file
   * `export LD_LIBRARY_PATH=/opt/hsa/lib:${LD_LIBRARY_PATH}`
@@ -104,11 +110,12 @@ First, make sure that the HSA system is setup correctly
   * `cd ~/samples/MatrixMultiplication`
   * `make`
     * The *Makefile* assumes that the hsa header files are located at */opt/hsa/include*.  If you encounter a compilation failure, please update the *HSADIR* within the *Makefile* to the directory of the hsa header files in the system.
-  * `/opt/amd/hsa-debugger/AMDHsailGdb/bin/x86_64/hsail-gdb MatrixMul`
+    * Note that *matrixMul_kernel.hsail* is included for reference only. This sample will load the pre-built hsa binary (*matrixMul_kernel.brig*) to run the kernel.
+	* `/opt/amd/hsa-debugger/AMDHsailGdb/bin/x86_64/hsail-gdb MatrixMul`
     * Tips: include the directory that contains the hsail-gdb tool in your *PATH* environment variable
   
 <A NAME="Known">
-## Known Issues for September 2015 Beta Release
+## Known Issues for December 2015 Release
 * Incorrect debugging results with Kalmar Stencil2D and TileStaticStorageBandwitdh samples due to improperly generated debug info in these applications.
 * Debugging the multiple_cl_files SNACK example can cause a system hang.
 * Enabling logging on Carrizo can cause a segmentation fault at the end of the application.
@@ -116,4 +123,3 @@ First, make sure that the HSA system is setup correctly
 * HSAIL kernels that contain global (or read only) variables are not supported
 * HSAIL kernels that contain hsail function calls are not supported
 * HSAIL backtrace is not supported
-* HSAIL function breakpoints must also be set to stop at HSAIL source breakpoints.

@@ -46,7 +46,7 @@ This will stop the application just before every dispatch begins executing on th
 
 <A NAME="SetHsailKernelSourceBreakpoints">
 #### Setting HSAIL Kernel Source Breakpoints
-In order to break into HSAIL kernels, you need to set HSAIL source breakpoints. For this release, you must set HSAIL function breakpoints first (such as `break hsail`) in order for hsail-gdb to stop at the HSAIL source breakpoints. Hsail-gdb saves the kernel source for the present dispatch to a temporary file called *temp_source*. HSAIL source breakpoints can be set by specifying the line number from the *temp_source* HSAIL source file. The *temp_source* file is overwritten by hsail-gdb on every dispatch.
+In order to break into HSAIL kernels, you need to set HSAIL source breakpoints. Hsail-gdb saves the kernel source for the present dispatch to a temporary file called *temp_source*. HSAIL source breakpoints can be set by specifying the line number from the *temp_source* HSAIL source file. The *temp_source* file is overwritten by hsail-gdb on every dispatch.
 
 Once you hit a kernel function breakpoint, you can view the *temp_source* file and choose a line number. You can set the source breakpoint using the syntax
 * `break hsail:line_number`

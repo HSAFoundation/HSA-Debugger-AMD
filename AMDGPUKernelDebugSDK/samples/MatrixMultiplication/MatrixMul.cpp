@@ -1,53 +1,13 @@
 //==============================================================================
-// Copyright 2015 ADVANCED MICRO DEVICES, INC.
+// Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-// AMD is granting you permission to use this software and documentation(if any)
-// (collectively, the "Materials") pursuant to the terms and conditions of the
-// Software License Agreement included with the Materials.If you do not have a
-// copy of the Software License Agreement, contact your AMD representative for a
-// copy.
-//
-// You agree that you will not reverse engineer or decompile the Materials, in
-// whole or in part, except as allowed by applicable law.
-//
-// WARRANTY DISCLAIMER : THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF
-// ANY KIND.AMD DISCLAIMS ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY,
-// INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON - INFRINGEMENT, THAT THE
-// SOFTWARE WILL RUN UNINTERRUPTED OR ERROR - FREE OR WARRANTIES ARISING FROM
-// CUSTOM OF TRADE OR COURSE OF USAGE.THE ENTIRE RISK ASSOCIATED WITH THE USE OF
-// THE SOFTWARE IS ASSUMED BY YOU.Some jurisdictions do not allow the exclusion
-// of implied warranties, so the above exclusion may not apply to You.
-//
-// LIMITATION OF LIABILITY AND INDEMNIFICATION : AMD AND ITS LICENSORS WILL NOT,
-// UNDER ANY CIRCUMSTANCES BE LIABLE TO YOU FOR ANY PUNITIVE, DIRECT,
-// INCIDENTAL, INDIRECT, SPECIAL OR CONSEQUENTIAL DAMAGES ARISING FROM USE OF
-// THE SOFTWARE OR THIS AGREEMENT EVEN IF AMD AND ITS LICENSORS HAVE BEEN
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.In no event shall AMD's total
-// liability to You for all damages, losses, and causes of action (whether in
-// contract, tort (including negligence) or otherwise) exceed the amount of $100
-// USD.  You agree to defend, indemnify and hold harmless AMD and its licensors,
-// and any of their directors, officers, employees, affiliates or agents from
-// and against any and all loss, damage, liability and other expenses (including
-// reasonable attorneys' fees), resulting from Your use of the Software or
-// violation of the terms and conditions of this Agreement.
-//
-// U.S.GOVERNMENT RESTRICTED RIGHTS : The Materials are provided with
-// "RESTRICTED RIGHTS." Use, duplication, or disclosure by the Government is
-// subject to the restrictions as set forth in FAR 52.227 - 14 and DFAR252.227 -
-// 7013, et seq., or its successor.Use of the Materials by the Government
-// constitutes acknowledgement of AMD's proprietary rights in them.
-//
-// EXPORT RESTRICTIONS: The Materials may be subject to export restrictions as
-//                      stated in the Software License Agreement.
-/// \author Developer Tools
-/// \file 
+/// \author AMD Developer Tools
+/// \file
 /// \brief  A matrix multiplication sample implemented using the HSA runtime and
 ///         HSAIL kernel 1.0F.  This sample is provided to demonstrate
 ///         hsail-gdb functionality.  It loads brig file directly (that was
 ///         generated with debugging support).
 //==============================================================================
-
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -81,9 +41,11 @@ void OutputMatrix(const std::string& fileName, const std::vector<float>& matrix,
 int main(int argc, char** argv)
 {
     bool doVerify = false;
+
     if (argc > 1)
     {
         std::string ipOption(argv[1]);
+
         if (ipOption == "--verify")
         {
             doVerify = true;
@@ -142,10 +104,10 @@ void RunTest(bool doVerify)
     hsa_kernel_dispatch_packet_t aql;
 
     if (!myHsa.CreateAQLPacketFromBrig(
-                &brigData[0],
-                gs_MATRIX_MUL_KERNEL_SYMBOL,
-                true,
-                aql))
+            &brigData[0],
+            gs_MATRIX_MUL_KERNEL_SYMBOL,
+            true,
+            aql))
     {
         std::cerr << "RuntTest(): Error in finalizing and creating AQL packet.\n";
         return;
@@ -222,7 +184,7 @@ void RunTest(bool doVerify)
 
     // We have extra 6 64-bits kernel arguments before matrix C, A and B in kernel
     // arguments, so we need to set them up in offset size.
-    if (!myHsa.AppendKernelArgs(&pVal, sizeof(float*), sizeof(uint64_t)*6))
+    if (!myHsa.AppendKernelArgs(&pVal, sizeof(float*), sizeof(uint64_t) * 6))
     {
         std::cerr << "RunTest(): Error on pBufferC AppendKernelArgs()\n";
     }
@@ -273,13 +235,13 @@ void RunTest(bool doVerify)
         std::cout << "Calculating reference data...\n";
         std::vector<float> referenceData(pBufferC.size(), 0.0f);
 
-        for (uint32_t i=0; i < HA; ++i)
+        for (uint32_t i = 0; i < HA; ++i)
         {
-            for (uint32_t j=0; j<WB; ++j)
+            for (uint32_t j = 0; j < WB; ++j)
             {
                 float sum = 0;
 
-                for (uint32_t k=0; k<HB; ++k)
+                for (uint32_t k = 0; k < HB; ++k)
                 {
                     // c_ij = sum_k^HB(a_ik * b_kj);
                     sum += pBufferA[i * WA + k] * pBufferB[k * WB + j];
@@ -317,6 +279,7 @@ void RunTest(bool doVerify)
         {
             std::cout << "Pass.\n";
         }
+
 #ifdef _DEBUG
         // Output matrices data to files
         OutputMatrix("matrixC.mat", pBufferC, WC);
@@ -326,11 +289,11 @@ void RunTest(bool doVerify)
     }
 
     // Cleanup.
-    status = hsa_memory_deregister(&(pBufferA[0]), sizeof(float)*pBufferA.size());
+    status = hsa_memory_deregister(&(pBufferA[0]), sizeof(float) * pBufferA.size());
     HSA_CHECK_STATUS(status);
-    status = hsa_memory_deregister(&(pBufferB[0]), sizeof(float)*pBufferB.size());
+    status = hsa_memory_deregister(&(pBufferB[0]), sizeof(float) * pBufferB.size());
     HSA_CHECK_STATUS(status);
-    status = hsa_memory_deregister(&(pBufferC[0]), sizeof(float)*pBufferC.size());
+    status = hsa_memory_deregister(&(pBufferC[0]), sizeof(float) * pBufferC.size());
     HSA_CHECK_STATUS(status);
 
     myHsa.CleanUp();
@@ -380,11 +343,13 @@ void OutputMatrix(const std::string& fileName, const std::vector<float>& matrix,
         /// \todo: windows version directory creation
 #else
         // Check if gs_OUTPUT_MATRIX_DIR is exist.
-        DIR *pDir = opendir(gs_OUTPUT_MATRIX_DIR.c_str());
-        if(NULL == pDir)
+        DIR* pDir = opendir(gs_OUTPUT_MATRIX_DIR.c_str());
+
+        if (NULL == pDir)
         {
             // Create it.
             int err = mkdir(gs_OUTPUT_MATRIX_DIR.c_str(), S_IRWXU | S_IRWXG);
+
             if (0 != err)
             {
                 std::cout << "Warning in RunTest(): Cannot create output matrix directory \"" << gs_OUTPUT_MATRIX_DIR << "\"\n";
@@ -396,6 +361,7 @@ void OutputMatrix(const std::string& fileName, const std::vector<float>& matrix,
             // Nothing need to be done if gs_OUTPUT_MATRIX_DIR already exist.
             closedir(pDir);
         }
+
 #endif
         isFirst = false;
     }
@@ -407,12 +373,12 @@ void OutputMatrix(const std::string& fileName, const std::vector<float>& matrix,
     {
         uint32_t height = matrix.size() / width;
 
-        for (uint32_t i=0; i < height; ++i)
+        for (uint32_t i = 0; i < height; ++i)
         {
             uint32_t rowOffset = i * width;
             outFile << matrix[rowOffset];
 
-            for (uint32_t j=1; j < width; ++j)
+            for (uint32_t j = 1; j < width; ++j)
             {
                 outFile << "\t" << matrix[rowOffset + j];
             }

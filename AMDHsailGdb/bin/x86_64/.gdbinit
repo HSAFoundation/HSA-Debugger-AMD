@@ -1,3 +1,5 @@
+# Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
+
 # Enable this when debugging a gdb
 
 add-auto-load-safe-path /
@@ -13,7 +15,7 @@ echo HSAIL Configure Steps Done\n
 echo ....Certain GDB signals have been changed\n
 
 set pagination off
-handle SIGUSR1 nostop pass print
+handle SIGUSR1 nostop pass noprint
 handle SIGCHLD stop pass print
 set mi-async on
 end
