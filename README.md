@@ -1,7 +1,7 @@
 # HSA Debugger December 2015 Release (version 1.0)
 
 ## Overview
-The HSA Debugger provides a gdb-based debugging environment for debugging host application and HSAIL kernels running on AMD HSA platforms.  The kernel programming language currently supported is HSAIL 1.0.  There are two packages included in this Alpha Release:
+The HSA Debugger provides a gdb-based debugging environment for debugging host application and HSAIL kernels running on AMD HSA platforms.  The kernel programming language currently supported is HSAIL 1.0.  There are two packages included in this release:
 * AMD HSAIL gdb package that contains the hsail-gdb tool 
   * based on GDB 7.8, the GNU source-level debugger
 * AMD GPU Kernel Debug SDK package that contains the necessary header, library and sample files to run the hsail-gdb tool
