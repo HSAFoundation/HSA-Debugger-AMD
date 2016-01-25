@@ -1,7 +1,7 @@
-# HSA Debugger December 2015 Release (version 1.0)
+# HSA Debugger January 2016 Release (version 1.0)
 
 ## Overview
-The HSA Debugger provides a gdb-based debugging environment for debugging host application and HSAIL kernels running on AMD HSA platforms.  The kernel programming language currently supported is HSAIL 1.0.  There are two packages included in this release:
+The HSA Debugger provides a gdb-based debugging environment for debugging host application and HSAIL kernels running on AMD HSA platforms.  The kernel programming language currently supported is HSAIL 1.0.  There are two packages included in this Alpha Release:
 * AMD HSAIL gdb package that contains the hsail-gdb tool 
   * based on GDB 7.8, the GNU source-level debugger
 * AMD GPU Kernel Debug SDK package that contains the necessary header, library and sample files to run the hsail-gdb tool
@@ -23,10 +23,11 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
 * View active GPU states (active work-groups, work-items and wavefronts information)
 
 <A NAME="WhatsNew">
-## What's New in December 2015 Release (version 1.0)
+## What's New in January 2016 Release (version 1.0)
 * First public release supporting AMD Kaveri and Carrizo
 * Open source: [GDB](https://github.com/HSAFoundation/HSA-Debugger-GDB-Source-AMD), [AMD GPU Debug SDK](https://github.com/HSAFoundation/HSA-Debugger-Source-AMD)
 * Adds ability to set and run to HSAIL kernel source breakpoints without setting HSAIL function breakpoints first
+* Adds ability to safely kill HSAIL applications while a dispatch is inflight using the kill command
 * Many bug fixes and stability improvements
 
 ## What's New in September 2015 Beta Release (version 0.6)
@@ -84,8 +85,8 @@ The directory structure of the HSA Debugger packages:
     * *hsail-gdb*, *amd-gdb*, *.gdbinit*
   * *LICENSE.txt*
 * *ubuntu*
-  * *amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb*
-  * *amd-hsail-gdb_1.0.908_amd64.deb*
+  * *amd-gpu-kernel-debug-sdk_<VERSION>_amd64.deb*
+  * *amd-hsail-gdb_<VERSION>_amd64.deb*
   
 If you download the HSA Debugger packages or files separately, you must create the same directory structure as shown above in order to run hsail-gdb successfully.
   
@@ -99,9 +100,9 @@ First, make sure that the HSA system is setup correctly
     As part of the HSAIL debugger package, there is a sample HSAIL *MatrixMultiplication* that can be used with hsail-gdb.
   
 ###HSA Debugger Installation
-1. Download the debian packages (*amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb* and *amd-hsail-gdb_1.0.908_amd64.deb*)
-    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_1.0.908_amd64.deb`
-    * `sudo dpkg -i amd-hsail-gdb_1.0.908_amd64.deb`
+1. Download the debian packages (*amd-gpu-kernel-debug-sdk_<VERSION>_amd64.deb* and *amd-hsail-gdb_<VERSION>_amd64.deb*)
+    * `sudo dpkg -i amd-gpu-kernel-debug-sdk_<VERSION>_amd64.deb`
+    * `sudo dpkg -i amd-hsail-gdb_<VERSION>_amd64.deb`
 	  * The installed files will be placed in */opt/amd/hsa-debugger* folder.
 2. Ensure the environment variable *LD_LIBRARY_PATH* contains the directory of the HSA Runtime library (the default is */opt/hsa/lib*).  You can add the following line into *.bashrc* file
   * `export LD_LIBRARY_PATH=/opt/hsa/lib:${LD_LIBRARY_PATH}`
@@ -116,11 +117,10 @@ First, make sure that the HSA system is setup correctly
     * Tips: include the directory that contains the hsail-gdb tool in your *PATH* environment variable
   
 <A NAME="Known">
-## Known Issues for December 2015 Release
-* Incorrect debugging results with Kalmar Stencil2D and TileStaticStorageBandwitdh samples due to improperly generated debug info in these applications.
+## Known Issues for January 2016 Release
 * Debugging the multiple_cl_files SNACK example can cause a system hang.
-* Enabling logging on Carrizo can cause a segmentation fault at the end of the application.
 * HSAIL programs (i.e. hsa code objects) that contain more than one BRIG module are not supported
 * HSAIL kernels that contain global (or read only) variables are not supported
 * HSAIL kernels that contain hsail function calls are not supported
 * HSAIL backtrace is not supported
+* Usage of hsail-gdb objects in python scripts in not yet supported.
