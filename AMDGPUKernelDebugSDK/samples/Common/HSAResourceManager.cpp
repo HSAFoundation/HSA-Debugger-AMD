@@ -264,6 +264,22 @@ bool HSAResourceManager::CreateDefaultQueue(bool enableKernelTimestamps)
     return ret;
 }
 
+bool HSAResourceManager::SetQueue(hsa_queue_t* pQueue)
+{
+    bool ret = true;
+
+    if (!DestroyQueue())
+    {
+        ret = false;
+        std::cerr << "Error in SetQueue(): Destroying previous existing queue failed\n";
+        return ret;
+    }
+
+    ms_pQueue = pQueue;
+
+    return ret;
+};
+
 // Simple function to trim head and tail space of a string.
 static void TrimHeadAndTailSpace(std::string& s)
 {

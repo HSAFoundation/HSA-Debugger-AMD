@@ -62,8 +62,9 @@ IPCResourceCleanup()
     rm -f fifo-agent-w-gdb-r 2> /dev/null
     rm -f fifo-gdb-w-agent-r 2> /dev/null
 
-    # remove temp_source file
+    # remove temp_source file and any other left-over files
     rm -f temp_source 2> /dev/null
+    rm -f .temp_source* 2> /dev/null
 }
 
 IPCResourceCleanup
@@ -123,9 +124,13 @@ fi
 export ENABLE_HSAIL_GDB=1
 
 $REALPATH/amd-gdb -iex "add-auto-load-safe-path $REALPATH" -ix $REALPATH/.gdbinit $GDB_ARGS
+# Capture GDB's return code to send to the terminal, 
+# we are not interested in the subsequent IPC cleanup and logging return codes 
+GDB_RETURN_CODE=$?
 
 #cp $REALPATH/amd-gdb $REALPATH/gdb
 #gdb --args $REALPATH/gdb $GDB_ARGS
+#GDB_RETURN_CODE=$?
 
 
 # Steps to run after amd-gdb exits
@@ -142,4 +147,18 @@ else
 	mv gdb.txt $GDBLOGFILENAME 2> /dev/null
 fi
 
+# There is an issue with how we terminate gdb when we call quit
+#
+# Some internal ncurses state is getting messed up when we call the quit functionality twice in gdb
+# As a temporary workaround we use the below command
+# http://unix.stackexchange.com/questions/79684/fix-terminal-after-displaying-a-binary-file
+# This does not seem to clear the full terminal like the "reset" command and seems to have no other side effect
+#
+# If we want to clear the terminal of all previous OP, we should add "tput rs1"
+# tput and stty together seem to have the same functionality as reset
+stty sane
+
 IPCResourceCleanup
+
+# Return with GDB's return code
+exit $GDB_RETURN_CODE

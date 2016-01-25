@@ -16,7 +16,7 @@ echo ....Certain GDB signals have been changed\n
 
 set pagination off
 handle SIGUSR1 nostop pass noprint
-handle SIGCHLD stop pass print
+handle SIGUSR2 stop pass print
 set mi-async on
 end
 

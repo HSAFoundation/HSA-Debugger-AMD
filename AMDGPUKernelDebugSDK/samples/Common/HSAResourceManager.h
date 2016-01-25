@@ -104,6 +104,12 @@ public:
     /// \return true if there is no error
     static bool CreateDefaultQueue(bool enableKernelTimestamps = false);
 
+    /// \brief overide the default queue with the specified queue (deleting the default queue if necessary)
+    ///
+    /// \param[in] pQueue the queue to replace the default queue with
+    /// \return true if there is no error
+    static bool SetQueue(hsa_queue_t* pQueue);
+
     /// \brief Finalize BRIG and create a default aql packet with 1 workitem
     ///
     /// \param[in]  brig            BRIG module to be finalize to ISA.

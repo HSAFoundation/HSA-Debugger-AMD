@@ -1,5 +1,5 @@
 /************************************************************************************//**
-** Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
+** Copyright (c) 2015-2016 Advanced Micro Devices, Inc. All rights reserved.
 **
 ** \author AMD Developer Tools
 ** \file
@@ -39,7 +39,7 @@
 **
 ** \section Requirements
 ** For HSA:
-** 1. AMD Kaveri APUs
+** 1. AMD Kaveri and Carrizo APUs
 ** 2. HSA Runtime and HSAIL 1.0 Final
 **
 ****************************************************************************************/
@@ -80,7 +80,7 @@ extern "C" {
 /** The AMD GPU Debug API minor version. */
 #define AMDGPUDEBUG_VERSION_MINOR 2
 /** The AMD GPU Debug API build number. */
-#define AMDGPUDEBUG_VERSION_BUILD 2664
+#define AMDGPUDEBUG_VERSION_BUILD 2703
 
 /** The maximum number of lanes in a wavefront for the GPU device. */
 #define HWDBG_WAVEFRONT_SIZE 64
