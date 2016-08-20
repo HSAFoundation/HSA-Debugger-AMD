@@ -1,12 +1,15 @@
-# HSA Debugger January 2016 Release (version 1.0)
+## The HSA-Debugger has been superseded by the RadeonOpenCompute/ROCm-Debugger now located at https://github.com/RadeonOpenCompute/ROCm-Debugger
 
-## Overview
+
+### HSA Debugger January 2016 Release (version 1.0)
+
+#### Overview
 The HSA Debugger provides a gdb-based debugging environment for debugging host application and HSAIL kernels running on AMD HSA platforms.  The kernel programming language currently supported is HSAIL 1.0.  There are two packages included in this Alpha Release:
 * AMD HSAIL gdb package that contains the hsail-gdb tool 
   * based on GDB 7.8, the GNU source-level debugger
 * AMD GPU Kernel Debug SDK package that contains the necessary header, library and sample files to run the hsail-gdb tool
 
-## Table of Contents
+#### Table of Contents
 * [Major Features](#Major)
 * [What's New](#WhatsNew)
 * [System Requirements](#System)
@@ -17,20 +20,20 @@ The HSA Debugger provides a gdb-based debugging environment for debugging host a
 * [HSAIL gdb LICENSE](AMDHsailGdb/LICENSE.txt) and [SDK LICENSE](AMDGPUKernelDebugSDK/LICENSE.txt)
 
 <A NAME="Major">
-## Major Features
+#### Major Features
 * Seamless host application and HSAIL kernel source debugging using a familiar gdb-based debugging environment on AMD HSA platforms
 * Set HSAIL kernel breakpoints, single stepping and inspect HSAIL registers within HSAIL kernel source
 * View active GPU states (active work-groups, work-items and wavefronts information)
 
 <A NAME="WhatsNew">
-## What's New in January 2016 Release (version 1.0)
+#### What's New in January 2016 Release (version 1.0)
 * First public release supporting AMD Kaveri and Carrizo
 * Open source: [GDB](https://github.com/HSAFoundation/HSA-Debugger-GDB-Source-AMD), [AMD GPU Debug SDK](https://github.com/HSAFoundation/HSA-Debugger-Source-AMD)
 * Adds ability to set and run to HSAIL kernel source breakpoints without setting HSAIL function breakpoints first
 * Adds ability to safely kill HSAIL applications while a dispatch is inflight using the kill command
 * Many bug fixes and stability improvements
 
-## What's New in September 2015 Beta Release (version 0.6)
+#### What's New in September 2015 Beta Release (version 0.6)
 * Initial AMD Carrizo support (alpha).
 * Improves support for HSAIL-level debugging for Kalmar applications.
 * Improves support for HSAIL-level debugging for SNACK applications.
